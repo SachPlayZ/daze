@@ -1,0 +1,48 @@
+{
+  "provider": "TxLINE",
+  "endpoint": "/api/scores/snapshot/18222446",
+  "fixtureId": "18222446",
+  "receivedAt": "2026-07-10T21:58:39.286Z",
+  "payload": [
+    {
+      "FixtureId": 18222446,
+      "GameState": "scheduled",
+      "StartTime": 1783818000000,
+      "IsTeam": true,
+      "FixtureGroupId": 10115675,
+      "CompetitionId": 72,
+      "CountryId": 466,
+      "SportId": 1,
+      "Participant1IsHome": true,
+      "Participant2Id": 3099,
+      "Participant1Id": 1489,
+      "Action": "comment",
+      "Id": 1,
+      "Ts": 1783465737802,
+      "ConnectionId": 1014,
+      "Seq": 1,
+      "Data": {},
+      "Stats": {}
+    },
+    {
+      "FixtureId": 18222446,
+      "GameState": "scheduled",
+      "StartTime": 1783818000000,
+      "IsTeam": true,
+      "FixtureGroupId": 10115675,
+      "CompetitionId": 72,
+      "CountryId": 466,
+      "SportId": 1,
+      "Participant1IsHome": true,
+      "Participant2Id": 3099,
+      "Participant1Id": 1489,
+      "Action": "coverage_update",
+      "Id": 0,
+      "Ts": 1783465737795,
+      "ConnectionId": 1014,
+      "Seq": 0,
+      "Data": {},
+      "Stats": {}
+    }
+  ]
+}

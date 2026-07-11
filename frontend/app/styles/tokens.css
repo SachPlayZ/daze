@@ -1,0 +1,22 @@
+:root {
+  --daze-space-1: 4px;
+  --daze-space-2: 8px;
+  --daze-space-3: 12px;
+  --daze-space-4: 16px;
+  --daze-space-5: 20px;
+  --daze-space-6: 24px;
+  --daze-space-8: 32px;
+  --daze-space-10: 40px;
+  --daze-radius-control: 12px;
+  --daze-radius-card: 18px;
+  --daze-radius-pill: 999px;
+  --daze-shadow-floating: 0 18px 50px rgb(53 26 18 / 14%);
+  --daze-motion-micro: 160ms;
+  --daze-motion-normal: 220ms;
+  --daze-motion-live: 420ms;
+  --daze-gradient-brand:
+    radial-gradient(circle at 50% 32%, rgb(255 104 65 / 92%) 0%, rgb(255 149 101 / 58%) 32%, transparent 58%),
+    radial-gradient(circle at 12% 88%, rgb(112 184 154 / 88%) 0%, transparent 42%),
+    radial-gradient(circle at 92% 76%, rgb(246 195 91 / 84%) 0%, transparent 38%),
+    linear-gradient(135deg, #f4f0e8 0%, #ffd1bb 48%, #e9d9a9 100%);
+}

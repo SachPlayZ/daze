@@ -1,0 +1,27 @@
+import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
+import { buildHistoricalReplayReadModel, buildJudgeModeLeaderboard, projectHistoricalReplayDraft, quickPickHistoricalReplay, validateHistoricalReplayDraft } from "../../apps/api/src/historical-replay";
+
+const captured = JSON.parse(readFileSync("tests/provider-fixtures/txline-devnet/scores-historical-18175981.json", "utf8")) as { payload: unknown[] };
+const replay = buildHistoricalReplayReadModel(captured.payload);
+assert.equal(replay.fixtureId, "18175981");
+assert.equal(replay.historical, true);
+assert.equal(replay.readiness.ready, true);
+assert.equal(replay.players.length, 52);
+assert.deepEqual(replay.players.reduce<Record<string, number>>((counts, player) => ({ ...counts, [player.position]: (counts[player.position] ?? 0) + 1 }), {}), { GK: 6, DEF: 18, MID: 14, FWD: 14 });
+assert.equal(replay.eventSummary.goals, 3);
+assert.equal(replay.eventSummary.substitutions, 10);
+assert.equal(replay.eventSummary.settlementBlocked, false, "captured substitution amendments resolve every scoring-relevant player join");
+const quickPick = quickPickHistoricalReplay(captured.payload, "4-3-3", 18175981);
+assert.deepEqual(validateHistoricalReplayDraft(captured.payload, quickPick), { valid: true, errors: [] });
+const projection = projectHistoricalReplayDraft(captured.payload, quickPick);
+assert.equal(projection.valid, true);
+assert.ok(projection.total !== null);
+assert.ok(projection.rows.length > 0);
+assert.ok(projection.impacts.length > 0);
+assert.ok(projection.impacts.every((impact) => impact.playerName !== "Unknown player"));
+assert.equal(projection.reconciling, false);
+const judgeMode = buildJudgeModeLeaderboard(captured.payload);
+assert.equal(judgeMode.entries.length, 4);
+assert.deepEqual(judgeMode.entries.map((entry) => entry.rank), [1, 2, 3, 4]);
+assert.equal(judgeMode.reconciling, false);
