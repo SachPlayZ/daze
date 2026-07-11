@@ -5,7 +5,7 @@ export type TxlineCapability = { key: CapabilityKey; state: CapabilityState; par
 /** All capabilities start fail-closed until real provider evidence is checked in. */
 export const capabilityRegistry: Record<CapabilityKey, TxlineCapability> = Object.fromEntries(([
   "PLAYER_ROSTER", "PLAYER_POSITION", "STARTER_STATUS", "SUBSTITUTION", "GOAL", "PENALTY_GOAL", "YELLOW_CARD", "RED_CARD", "MATCH_CLOCK", "FINAL_SCORE",
-] as CapabilityKey[]).map((key) => [key, { key, state: "SHADOW", parserVersion: "unverified", capturedFixtureIds: [], samplePayloadPaths: [], verifiedAt: null, notes: "Awaiting captured TxLINE payload and contract tests." }])) as Record<CapabilityKey, TxlineCapability>;
+] as CapabilityKey[]).map((key) => [key, { key, state: "SHADOW", parserVersion: "unverified", capturedFixtureIds: [], samplePayloadPaths: [], verifiedAt: null, notes: "Awaiting captured TxLINE payload and contract tests." }])) as unknown as Record<CapabilityKey, TxlineCapability>;
 capabilityRegistry.PENALTY_MISS = { key: "PENALTY_MISS", state: "DISABLED", parserVersion: "unverified", capturedFixtureIds: [], samplePayloadPaths: [], verifiedAt: null, notes: "Requires verified outcome enum." };
 capabilityRegistry.OWN_GOAL = { key: "OWN_GOAL", state: "DISABLED", parserVersion: "unverified", capturedFixtureIds: [], samplePayloadPaths: [], verifiedAt: null, notes: "Requires verified GoalType enum." };
 capabilityRegistry.PLAYER_ROSTER = { key: "PLAYER_ROSTER", state: "VERIFIED", parserVersion: "lineup-action-v1", capturedFixtureIds: ["18175981"], samplePayloadPaths: ["tests/provider-fixtures/txline-devnet/scores-snapshot-18175981.json"], verifiedAt: "2026-07-10T15:03:35.981Z", notes: "Captured Action=lineups payload; contract test validates required identity fields." };
