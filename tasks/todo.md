@@ -40,7 +40,11 @@
 - [x] Build the protected /ops diagnostics page.
 - [x] Set up a real runnable test suite (root package.json + scripts/run-tests.mjs).
 - [x] Write the 6 remaining ADRs required by AGENTS.md 3.3.
-- [ ] Build the live match centre page and shareable result card.
+- [x] Build the live match centre page and shareable result card.
+- [x] Add packages/observability (metrics registry + structured logging), wired into the worker.
+- [ ] P1 differentiators (Fantasy Pulse/StablePrice odds, TxLINE verification receipts, World Cup season table) -- explicitly deferred by PLAN.md itself until P0 is green; not started.
+- [ ] Vector brand SVGs (only PNG rasters exist) -- asset production, not an engineering task.
+- [ ] Public production deployment, demo video recording, final submission -- requires human decisions (hosting provider/credentials, on-camera narration) this agent cannot make unilaterally.
 
 ## Verification
 
