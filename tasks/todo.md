@@ -28,11 +28,19 @@
 - [x] Enforce Token-2022 with runtime checks and upgrade before creating any contest.
 - [x] Preflight a valueless Token-2022 test mint.
 - [x] Create a valueless Token-2022 test mint and preflight fixture contest configuration.
-- [ ] Create the captured-fixture devnet contest and verify its program-owned vault.
+- [x] Create the captured-fixture devnet contest and verify its program-owned vault.
 - [x] Create the captured-fixture devnet contest and verify its program-owned vault.
 - [x] Allocate valueless test tokens and simulate the first contest entry.
 - [x] Run the full three-entry devnet settlement and claim path.
-- [ ] Build, simulate, and authorize the end-to-end devnet entry, settlement, and claim flow.
+- [x] Build, simulate, and authorize the end-to-end devnet entry, settlement, and claim flow.
+- [x] Build a real runnable worker process (fixture import, SSE ingestion, scoring projection, telegram outbox dispatch).
+- [x] Build a real runnable Telegram bot process with all 8 commands and wallet-linking handshake.
+- [x] Wire the contest lock/entry transaction flow into the frontend end to end.
+- [x] Create a fresh, currently-joinable devnet demo contest (prior contests were expired/one-off tests).
+- [x] Build the protected /ops diagnostics page.
+- [x] Set up a real runnable test suite (root package.json + scripts/run-tests.mjs).
+- [x] Write the 6 remaining ADRs required by AGENTS.md 3.3.
+- [ ] Build the live match centre page and shareable result card.
 
 ## Verification
 
@@ -150,3 +158,39 @@
 - Settlement-lock guard upgraded at devnet slot `475582334`. Fresh tier-3 contest `AeUYSa4pQKDhj22355sUqBMS7SyW44wRxkNeQMC6jxid` confirms a pre-lock settlement simulation now fails with custom error `6010` (`SettlementBeforeLock`). A fresh post-lock three-entry/claim run remains required for release-grade timing evidence.
 - Root `.env` is owner-readable only. Runtime `/api/health` confirms authenticated TxLINE access, wallet-auth challenge setup is active, and Telegram `getMe` confirms the configured bot token. Database migration has not yet been applied.
 - Simulate then execute the complete devnet entry, settlement, and claim workflow only after each state-changing transaction is explicitly approved.
+
+## Session: worker/bot/entry-flow build-out
+
+### Changed
+
+- All three DB migrations (0001, 0002, and new 0003) are now actually applied to the live Neon DB; the wallet-challenge store was already DB-backed contrary to the prior stale note above.
+- Added `apps/worker` as a real runnable Node process (package.json/tsconfig/tsx, `pg` dependency): fixture-importer, player-readiness-poller, score-sse-consumer with reconnect/backoff, soccer-event normalization, deterministic scoring projection (rebuilt from persisted `normalized_events` on restart via `fullReplay`, not an ad hoc in-memory-only state), ledger/entry-totals/rank persistence, and a telegram-notifier outbox drain. Added migration `0003_worker_state.sql` (`provider_cursors`, `telegram_links`, `telegram_link_tokens`, `notification_preferences`, `entry_totals`).
+- Added `apps/bot` as a real long-polling Telegram bot process implementing all 8 commands from PLAN.md 8.2, plus `frontend/app/link` and `frontend/app/api/telegram/link` completing the wallet<->Telegram linking handshake. The bot never drains `notification_outbox` itself — only the worker does, to avoid double-sends (documented in ADR 0009).
+- Wired the actual contest lock + devnet entry transaction flow into the frontend: `/api/auth/session`, `/api/contest/lock-team` (server-revalidates the draft, computes the canonical team hash, persists an immutable `locked_teams` row), `/api/contest/entry-transaction` (builds the unsigned `enter_contest` instruction), and a lock/entry panel in `ReplayBuilder.tsx` that signs and submits via Phantom and confirms on devnet.
+- Created a fresh devnet contest (`F5tCE7LDBVistE8ax24jPpr6wXbZT1GuWv1wTydqsie`, tier 4, stake 100, lock ~3 days out) since the prior contests from earlier sessions had already expired or were one-off settlement tests; updated root `.env` and `frontend/.env.local` to point at it.
+- Added the protected `/ops` diagnostics page and `/api/ops/diagnostics` (token-gated via new `OPS_ACCESS_TOKEN`), showing the capability registry, position mapping, and live per-fixture readiness from the DB the worker populates.
+- Added a root `package.json` + `scripts/run-tests.mjs` so the 17 `tests/**/*.spec.ts` files run uniformly via `npm test` instead of manual per-session `tsc`-to-temp-dir compilation.
+- Wrote the 6 ADRs required by AGENTS.md 3.3 that were missing (`docs/decisions/0003`-`0010`): player/action ID join, scoring/captain semantics, lock time policy, tie-breaking, contest economics, settlement trust model, Telegram notification policy, Solana program account layout.
+- Fixed a pre-existing `as` type-cast error in `packages/config/src/capabilities.ts` (blocked a clean `tsc --noEmit` for any new consumer of the module).
+
+### Verified
+
+- `npm test` (new root runner): 17/17 specs pass.
+- `cd frontend && pnpm build && pnpm lint`: pass with zero errors after every change in this session (worker, bot/link, ops, entry-flow).
+- `apps/worker`: typechecks clean, 25s live smoke test against real Neon DB + real TxLINE devnet — schema applied, fixture-importer synced 6 real fixtures, safe no-op fallback when no contest configured (this was true until the contest-creation step later in the session).
+- `apps/bot`: typechecks clean, 8s live smoke test — DB schema ready, polling loop connects to `getUpdates`.
+- Contest creation: `create_contest` simulated then sent on devnet, confirmed (`4UFAXjP4i1gKBGWKqPeEGai8eWgCbXy2PpFsLmPyYuwryKvZ8cy2fGCdUxZQnFb65c97xJfQihdzgKA1hUPEiuqS`), 195-byte contest account, empty vault, matches expected PDAs.
+- Entry flow: real quick-picked XI -> `/api/contest/lock-team` rejects a bogus 11-ID roster with precise per-position errors, accepts and persists a real quick-picked roster with a 64-hex-char hash -> `/api/contest/entry-transaction` returns an unsigned transaction that independently simulates successfully against devnet (`EnterContest`/`TransferChecked` logs, `err: null`).
+- `/ops`: curl proof of 401 without token, 200 with real capability/fixture data with the correct token.
+
+### Risks
+
+- The live worker pipeline (SSE consumer -> scoring -> ledger) has not yet been exercised against a real *live* in-progress match, only against the fixture-importer path and the historical replay path — the newly created demo contest's fixture (`18175981`) is not currently live, so end-to-end live-event scoring through the new worker remains to be observed on a real in-progress fixture before the demo.
+- Card scoring (yellow/red) remains correctly `SHADOW` in the capability registry because no card action has ever appeared in any captured TxLINE payload for this fixture — this is fail-closed-correct per PLAN.md, not a bug, but means the live demo cannot show a card-driven point swing unless a fixture with a captured card payload is found and the normalizer is extended with real evidence.
+- `/ops` access token and `NEXT_PUBLIC_APP_URL` were added to `frontend/.env.local`/root `.env` (gitignored) — a fresh deployment needs these set explicitly, they are not committed anywhere.
+
+### Follow-ups
+
+- Live match centre page and shareable result card build-out was in progress via a background agent as of this note; check its outcome before considering Phase 5/7's UI requirements (PLAN.md 7.1-7.5) closed.
+- No `contests` table exists off-chain; the whole stack (worker, bot, frontend) currently assumes exactly one active contest via `NEXT_PUBLIC_FANTASY_CONTEST_ID`/`FANTASY_CONTEST` env vars, consistent with how this repo was already built pre-session. Multi-contest support would need a real `contests` table and is out of scope for the hackathon P0 path.
+- Lock time (`lock_ts`) is still set manually per contest at creation, not derived from `kickoff_at - 5min` — see ADR 0005 for why, and what evidence would be needed to automate it.
