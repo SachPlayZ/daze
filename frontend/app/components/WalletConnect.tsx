@@ -2,8 +2,14 @@
 
 import { useState } from "react";
 
-type SolanaWallet = { isPhantom?: boolean; connect: () => Promise<{ publicKey: { toString(): string } }>; signMessage: (message: Uint8Array, display?: "utf8") => Promise<{ signature: Uint8Array }> };
+type SolanaWallet = {
+  isPhantom?: boolean;
+  connect: () => Promise<{ publicKey: { toString(): string } }>;
+  signMessage: (message: Uint8Array, display?: "utf8") => Promise<{ signature: Uint8Array }>;
+  signAndSendTransaction: (transaction: unknown) => Promise<{ signature: string }>;
+};
 declare global { interface Window { solana?: SolanaWallet } }
+export const WALLET_EVENT = "daze:wallet";
 
 const signatureBase64 = (signature: Uint8Array) => {
   let text = "";
@@ -28,6 +34,7 @@ export function WalletConnect() {
       const verified = await fetch("/api/auth/verify", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ nonce: challenge.nonce, wallet: address, signature: signatureBase64(signed.signature) }) });
       if (!verified.ok) throw new Error();
       setLabel(`${address.slice(0, 4)}…${address.slice(-4)}`);
+      window.dispatchEvent(new CustomEvent(WALLET_EVENT, { detail: { wallet: address } }));
     } catch { setLabel("Try wallet again"); } finally { setBusy(false); }
   };
   return <button className="connect-button" disabled={busy} onClick={connect}>{label}</button>;
