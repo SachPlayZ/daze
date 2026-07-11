@@ -3,6 +3,7 @@ import { db, ensureSchema } from "./db";
 import { txlineFromEnvironment } from "../../../packages/txline-client/src/index";
 import { TelegramClient } from "../../../packages/telegram/src/index";
 import { bootstrapFixture, handleProviderMessage } from "./pipeline";
+import { incrementCounter, observeHistogram, setGauge, snapshotMetrics } from "../../../packages/observability/src/index";
 
 const log = (...args: unknown[]) => console.log(new Date().toISOString(), ...args);
 
@@ -36,6 +37,7 @@ async function consumeScoreStream(fixtureId: string, contestId: string): Promise
     try {
       const response = await client.openEventStream("/api/scores/stream");
       log("score-sse-consumer: connected.");
+      setGauge("txline_stream_connected", 1);
       backoffMs = 1000;
       const reader = response.body!.getReader();
       const decoder = new TextDecoder();
@@ -53,15 +55,20 @@ async function consumeScoreStream(fixtureId: string, contestId: string): Promise
           if (!dataLines.length) continue;
           try {
             const payload = JSON.parse(dataLines.join(""));
+            setGauge("txline_last_event_age_seconds", 0);
+            const startedAt = Date.now();
             await handleProviderMessage(db(), contestId, payload);
+            observeHistogram("scoring_projection_latency_ms", Date.now() - startedAt);
           } catch (error) {
             log("score-sse-consumer: message failed:", error instanceof Error ? error.message : error);
           }
         }
       }
       log("score-sse-consumer: stream closed, reconnecting.");
+      setGauge("txline_stream_connected", 0);
     } catch (error) {
       log("score-sse-consumer: connection error:", error instanceof Error ? error.message : error);
+      setGauge("txline_stream_connected", 0);
     }
     await new Promise((resolve) => setTimeout(resolve, backoffMs + Math.random() * 500));
     backoffMs = Math.min(backoffMs * 2, 30_000);
@@ -80,7 +87,9 @@ async function dispatchNotifications(): Promise<void> {
     try {
       await telegram.sendDirectMessage(row.telegram_user_id!, row.payload.text);
       await db().query("update notification_outbox set sent_at = now() where id = $1", [row.id]);
+      incrementCounter("telegram_delivery_success_total");
     } catch (error) {
+      incrementCounter("telegram_delivery_failure_total");
       log("telegram-notifier: delivery failed for outbox row", row.id, error instanceof Error ? error.message : error);
     }
   }
@@ -91,7 +100,8 @@ async function readinessLoop(fixtureId: string, contestId: string): Promise<void
   const client = txlineFromEnvironment();
   for (;;) {
     const runtime = await bootstrapFixture(db(), client, fixtureId, contestId).catch((error) => { log("player-readiness-poller failed:", error instanceof Error ? error.message : error); return null; });
-    if (runtime) { log(`Fixture ${fixtureId} is ready: ${runtime.players.length} players loaded.`); return; }
+    if (runtime) { setGauge("fixture_readiness_state", 1, { fixtureId }); log(`Fixture ${fixtureId} is ready: ${runtime.players.length} players loaded.`); return; }
+    setGauge("fixture_readiness_state", 0, { fixtureId });
     log(`Fixture ${fixtureId} not yet ready; retrying in 60s.`);
     await new Promise((resolve) => setTimeout(resolve, 60_000));
   }
@@ -114,6 +124,7 @@ async function main(): Promise<void> {
   }
 
   setInterval(() => { dispatchNotifications().catch((error) => log("telegram-notifier loop failed:", error instanceof Error ? error.message : error)); }, 5_000);
+  setInterval(() => { log("metrics", JSON.stringify(snapshotMetrics())); }, 60_000);
 }
 
 main().catch((error) => { log("Daze worker crashed:", error); process.exitCode = 1; });

@@ -11,6 +11,7 @@ import { entryTotal, ledgerRowIdentity, type LedgerRow } from "../../../packages
 import { pointImpactMessage } from "../../../packages/telegram/src/index";
 import { scoringCapabilities } from "./capabilities";
 import { loadFixtureLineup } from "./lineup";
+import { incrementCounter } from "../../../packages/observability/src/index";
 
 export type FixtureRuntime = { fixtureId: string; players: FixturePlayer[]; captured: CapturedLineupPlayer[]; state: FixtureScoreState };
 
@@ -136,6 +137,7 @@ export async function handleProviderMessage(pool: Pool, contestId: string, raw: 
      on conflict (fixture_id, source_event_key, revision) do nothing`,
     [runtime.fixtureId, normalized.eventKey, String(normalized.revision), "soccer-historical-v1", JSON.stringify(normalized), rawEventId],
   );
+  incrementCounter("normalized_event_total", { kind: normalized.kind });
   const teams = await lockedTeamsFor(pool, contestId);
   const previousRows = runtime.state.rows;
   const nextState = projectEvent(runtime.state, normalized, runtime.players, teams, scoringCapabilities());
