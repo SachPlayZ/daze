@@ -1,0 +1,7 @@
+{
+  "provider": "TxLINE",
+  "endpoint": "/api/scores/historical/18172260",
+  "fixtureId": "18172260",
+  "receivedAt": "2026-07-12T10:59:36.094Z",
+  "status": 403
+}

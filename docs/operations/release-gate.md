@@ -14,8 +14,8 @@ Remaining gates:
 1. Confirm the deployed Token-2022-only runtime guard remains active on every release.
 2. Re-run a fresh devnet contest with a live lock window whenever program or client instruction code changes.
 3. Simulate each entry, settlement, claim, cancel, and refund transaction before sending it.
-4. Run a fresh post-lock end-to-end proof: real captured fixture -> valid XI -> three devnet entries -> lock elapsed -> final replay -> 50/30/20 settlement -> three claims. Contest `66xCqi19aJn41Ed2QaAM5sL6YovYj7fYT7tfPCjmkbjh` proved the entry, Merkle settlement, and claim mechanics (vault token balance reached zero), but it was finalized before its lock in the pre-guard binary and is not release-grade timing evidence.
+4. Completed: fresh post-lock devnet proof on 2026-07-12. Contest `GNQKN39HarJk6K9fDqEgbcYfwr5ESR9T3kaV1n4eyp9h` accepted three 100-token entries before lock `1783868317`; pre-lock settlement simulation failed with `SettlementBeforeLock` (`6010`); post-lock settlement [`23kRcb…623Dh`](https://explorer.solana.com/tx/23kRcbHW8szj3PEy2Sa9YhX2bCp1rwrFDjawLaCeFTcifppooAKd9c66DDBLoDKTu2s6pZyHzfV2odjSrge623Dh?cluster=devnet) was published and 150/90/60 claims emptied vault `AjiUN4wssCGE1DmjUD7toN3PhwGvYxcFxGMvkVCpeUSz`. A repeat claim simulation failed with `AlreadyClaimed` (`6006`).
 5. Confirm replay checksum equality, no unresolved scoring actions, no duplicate ledger/DM rows, and 320px UI checks against the configured contest.
-6. Replace the in-memory wallet challenge store with the configured durable database before production deployment.
+6. Completed: wallet challenges are persisted in Neon Postgres; current migrations create and verify `wallet_challenges`, event/ledger, settlement, and odds tables.
 
-External blockers: explicit approval for each devnet state-changing transaction, a funded devnet fee payer, and durable database/Telegram production credentials. These cannot be fabricated or bypassed.
+External blockers: public production hosting, durable production credentials, and demo-submission decisions. These cannot be fabricated or bypassed.

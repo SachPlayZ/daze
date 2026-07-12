@@ -1,9 +1,12 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { ReceiptBadge } from "./ReceiptBadge";
+import { OddsMoveBadge } from "./OddsMoveBadge";
 import { WALLET_EVENT } from "./WalletConnect";
 
 type LeaderboardRow = { rank: number; wallet: string; total: number; isMe: boolean };
+type MatchOdds = { part1Win: number; draw: number; part2Win: number; snapshotTs: string };
 type ImpactRow = {
   rule_code: string;
   player_id: string;
@@ -12,11 +15,20 @@ type ImpactRow = {
   applied_points: number;
   provisional: boolean;
   created_at: string;
+  source_event_key: string;
+  content_hash: string | null;
+  provider_timestamp: string | null;
+  proof_status: "provisional" | "settled" | "reconciled";
+  tx_signature: string | null;
+  odds_before: MatchOdds | null;
+  odds_after: MatchOdds | null;
+  odds_stale: boolean;
 };
 type LiveData = {
   feedLabel: string;
   feedStale: boolean;
   feedState: string;
+  fixtureId: string;
   leaderboard: LeaderboardRow[];
   myRow: LeaderboardRow | null;
   myTotal: number | null;
@@ -194,6 +206,21 @@ export function LiveMatchCentre() {
                 {impact.applied_points > 0 ? "+" : ""}
                 {impact.applied_points}
               </b>
+              <span style={{ gridColumn: 2 }}>
+                <ReceiptBadge
+                  fixtureId={d.fixtureId}
+                  sourceEventKey={impact.source_event_key}
+                  providerTimestamp={impact.provider_timestamp}
+                  contentHash={impact.content_hash}
+                  proofStatus={impact.proof_status}
+                  txSignature={impact.tx_signature}
+                />
+                <OddsMoveBadge
+                  oddsBefore={impact.odds_before}
+                  oddsAfter={impact.odds_after}
+                  isStale={impact.odds_stale}
+                />
+              </span>
             </div>
           ))}
         </div>

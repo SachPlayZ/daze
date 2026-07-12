@@ -69,7 +69,14 @@ export function projectEvent(state: FixtureScoreState, event: NormalizedSoccerEv
       if (concededParticipantId) applyConcededGoal(next, event.eventKey, event.revision, concededParticipantId, event.elapsedSec, players, teams, capabilities);
     }
   }
-  if (event.kind === "PENALTY_ATTEMPT" && event.period !== "PE" && event.outcome === "MISSED") add(rowsForAction(event.eventKey, "PENALTY_MISS", event.playerId, players, teams, event.revision, capabilities));
+  if (event.kind === "PENALTY_ATTEMPT" && event.period !== "PE") {
+    if (event.outcome === "MISSED") add(rowsForAction(event.eventKey, "PENALTY_MISS", event.playerId, players, teams, event.revision, capabilities));
+    if (event.outcome === "SCORED") {
+      add(rowsForAction(event.eventKey, "PENALTY_GOAL", event.playerId, players, teams, event.revision, capabilities));
+      const concededParticipantId = [...new Set(players.map((candidate) => candidate.participantId))].find((id) => id !== event.participantId);
+      if (concededParticipantId) applyConcededGoal(next, event.eventKey, event.revision, concededParticipantId, event.elapsedSec, players, teams, capabilities);
+    }
+  }
   if (event.kind === "CARD") {
     const action = event.card === "YELLOW" ? "YELLOW_CARD" : event.card === "DIRECT_RED" ? "DIRECT_RED_CARD" : event.card === "SECOND_YELLOW" ? "SECOND_YELLOW_ADJUSTMENT" : null;
     if (action) { add(rowsForAction(event.eventKey, action, event.playerId, players, teams, event.revision, capabilities)); if (event.card !== "YELLOW") closeActiveAt(next, event.playerId, event.elapsedSec); }

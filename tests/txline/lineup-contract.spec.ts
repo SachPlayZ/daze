@@ -6,6 +6,7 @@ const snapshot = JSON.parse(readFileSync("tests/provider-fixtures/txline-devnet/
 const lineup = parseLineupAction(snapshot.find((row: { Action: string }) => row.Action === "lineups"));
 assert.equal(lineup.length, 52);
 assert.equal(new Set(lineup.map((player) => player.participantId)).size, 2);
+assert.deepEqual([...new Set(lineup.map((player) => player.participantId))].sort(), ["1999", "3095"], "lineup participant identity matches score-action Participant1Id/Participant2Id normative IDs");
 assert.equal(lineup.filter((player) => player.starter).length, 22);
 for (const row of snapshot.filter((entry: { Action: string }) => ["goal", "injury", "substitution"].includes(entry.Action))) {
   for (const key of ["PlayerId", "PlayerInId", "PlayerOutId"]) if (row.Data?.[key] !== undefined) assert.ok(resolveSoccerActionPlayer(row.Data[key], lineup), `${row.Action}.${key} resolves through normativeId`);

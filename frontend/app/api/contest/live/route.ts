@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { readSession } from "../../../../../apps/api/src/auth";
 import { db } from "../../../../lib/db";
+import { decodeOddsSnapshot, extractMatchOdds, type MatchOdds } from "../../../../../packages/txline-client/src/odds-normalizer";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -80,7 +81,43 @@ export async function GET(request: Request) {
       }
     }
 
-    // Personal impact timeline (last 30 ledger rows, newest first)
+    // Settlement record, if this contest has published one (schema-only until a real settlement runs)
+    const settlementRow = await pool.query<{ tx_signature: string; merkle_root: string; published_at: string }>(
+      "select tx_signature, merkle_root, published_at from contest_settlements where contest_id = $1",
+      [contestId],
+    );
+    const settlement = settlementRow.rows[0] ?? null;
+
+    // Market Pulse: periodic odds snapshots for display only — never referenced by scoring, ledger, or settlement (ADR 0011)
+    const oddsResult = await pool.query<{ snapshot_ts: string; raw_json: unknown[] }>(
+      "select snapshot_ts, raw_json from fixture_odds_snapshots where fixture_id = $1 order by snapshot_ts asc",
+      [fixtureId],
+    );
+    const oddsSnapshots = oddsResult.rows;
+    const matchOddsAt = (snapshot: { snapshot_ts: string; raw_json: unknown[] }): MatchOdds | null =>
+      Array.isArray(snapshot.raw_json) ? extractMatchOdds(decodeOddsSnapshot(snapshot.raw_json), new Date(snapshot.snapshot_ts).toISOString()) : null;
+    const ODDS_STALE_MS = 5 * 60_000;
+    function bracketOdds(providerTimestamp: string | null): { odds_before: MatchOdds | null; odds_after: MatchOdds | null; odds_stale: boolean } {
+      if (!providerTimestamp || oddsSnapshots.length === 0) return { odds_before: null, odds_after: null, odds_stale: false };
+      const eventMs = new Date(providerTimestamp).getTime();
+      let beforeSnap: { snapshot_ts: string; raw_json: unknown[] } | null = null;
+      let afterSnap: { snapshot_ts: string; raw_json: unknown[] } | null = null;
+      for (const snapshot of oddsSnapshots) {
+        const snapMs = new Date(snapshot.snapshot_ts).getTime();
+        if (snapMs < eventMs) beforeSnap = snapshot;
+        else if (!afterSnap) afterSnap = snapshot;
+      }
+      const odds_before = beforeSnap ? matchOddsAt(beforeSnap) : null;
+      let odds_after = afterSnap ? matchOddsAt(afterSnap) : null;
+      let odds_stale = false;
+      if (afterSnap && new Date(afterSnap.snapshot_ts).getTime() - eventMs > ODDS_STALE_MS) {
+        odds_after = null;
+        odds_stale = true;
+      }
+      return { odds_before, odds_after, odds_stale };
+    }
+
+    // Personal impact timeline (last 30 ledger rows, newest first), joined to its raw TxLINE provenance
     let impacts: {
       rule_code: string;
       player_id: string;
@@ -89,6 +126,14 @@ export async function GET(request: Request) {
       applied_points: number;
       provisional: boolean;
       created_at: string;
+      source_event_key: string;
+      content_hash: string | null;
+      provider_timestamp: string | null;
+      proof_status: "provisional" | "settled" | "reconciled";
+      tx_signature: string | null;
+      odds_before: MatchOdds | null;
+      odds_after: MatchOdds | null;
+      odds_stale: boolean;
     }[] = [];
     if (wallet) {
       const entryId = `${contestId}:${wallet}`;
@@ -99,13 +144,25 @@ export async function GET(request: Request) {
         applied_points: number;
         provisional: boolean;
         created_at: string;
+        source_event_key: string;
+        content_hash: string | null;
+        provider_timestamp: string | null;
       }>(
-        "select rule_code, player_id, base_points, applied_points, provisional, created_at from fantasy_ledger where entry_id = $1 order by created_at desc limit 30",
-        [entryId],
+        `select fl.rule_code, fl.player_id, fl.base_points, fl.applied_points, fl.provisional, fl.created_at, fl.source_event_key,
+                rpe.content_hash, rpe.provider_timestamp
+         from fantasy_ledger fl
+         left join normalized_events ne on ne.fixture_id = $2 and ne.source_event_key = fl.source_event_key and ne.revision = fl.source_revision
+         left join raw_provider_events rpe on rpe.id = ne.raw_event_id
+         where fl.entry_id = $1
+         order by fl.created_at desc limit 30`,
+        [entryId, fixtureId],
       );
       impacts = ledger.rows.map((r) => ({
         ...r,
         player_name: playerMap.get(r.player_id) ?? r.player_id,
+        proof_status: r.provisional ? "provisional" : settlement ? "settled" : "reconciled",
+        tx_signature: r.provisional ? null : (settlement?.tx_signature ?? null),
+        ...bracketOdds(r.provider_timestamp),
       }));
     }
 
@@ -127,6 +184,7 @@ export async function GET(request: Request) {
       feedLabel,
       feedStale,
       feedState,
+      fixtureId,
       leaderboard: topRows.rows.map((r) => ({
         rank: r.rank,
         wallet: trunc(r.wallet),

@@ -1,0 +1,7 @@
+{
+  "provider": "TxLINE",
+  "endpoint": "/api/odds/snapshot/18237038",
+  "fixtureId": "18237038",
+  "receivedAt": "2026-07-12T00:42:51.482Z",
+  "payload": []
+}

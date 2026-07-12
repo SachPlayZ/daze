@@ -29,6 +29,26 @@ async function importFixtures(): Promise<void> {
   }
 }
 
+/** odds-snapshot-poller: periodic Market Pulse capture, fully isolated from the scoring pipeline. Display-only — never affects the ledger. */
+async function captureOddsSnapshot(fixtureId: string): Promise<void> {
+  const client = txlineFromEnvironment();
+  const payload = await client.getJson<unknown[]>(`/api/odds/snapshot/${fixtureId}`);
+  if (!Array.isArray(payload)) return;
+  await db().query(
+    `insert into fixture_odds_snapshots (fixture_id, snapshot_ts, raw_json) values ($1, now(), $2)
+     on conflict (fixture_id, snapshot_ts) do nothing`,
+    [fixtureId, JSON.stringify(payload)],
+  );
+  log(`odds-snapshot-poller: captured ${payload.length} markets for fixture ${fixtureId}.`);
+}
+
+async function oddsPollingLoop(fixtureId: string): Promise<never> {
+  for (;;) {
+    await captureOddsSnapshot(fixtureId).catch((error) => log("odds-snapshot-poller failed (non-fatal):", error instanceof Error ? error.message : error));
+    await new Promise((resolve) => setTimeout(resolve, 60_000));
+  }
+}
+
 /** score-sse-consumer + score-gap-recovery: reconnects with backoff and never scores a message that was not durably stored first. */
 async function consumeScoreStream(fixtureId: string, contestId: string): Promise<never> {
   const client = txlineFromEnvironment();
@@ -119,6 +139,7 @@ async function main(): Promise<void> {
   if (fixtureId && contestId) {
     await readinessLoop(fixtureId, contestId);
     void consumeScoreStream(fixtureId, contestId);
+    void oddsPollingLoop(fixtureId);
   } else {
     log("FANTASY_FIXTURE_ID / contest id not configured; running fixture-importer only.");
   }

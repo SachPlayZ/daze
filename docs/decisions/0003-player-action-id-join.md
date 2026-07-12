@@ -6,7 +6,7 @@ Soccer score actions (`dataSoccer.PlayerId`, `PlayerInId`, `PlayerOutId`) must r
 
 ## Decision
 
-Join action player IDs to lineup players through `player.normativeId`, not `fixturePlayerId` and not `player.id`. Captured fixture `18175981` proves `dataSoccer.PlayerId` values equal lineup `player.normativeId` values exactly; `resolveSoccerActionPlayer` (`packages/txline-client/src/lineup.ts`) implements this and returns `null` on any unresolved ID rather than guessing.
+Join action player IDs to lineup players through `player.normativeId`, not `fixturePlayerId` and not `player.id`. Captured fixture `18175981` proves `dataSoccer.PlayerId` values equal lineup `player.normativeId` values exactly; `resolveSoccerActionPlayer` (`packages/txline-client/src/lineup.ts`) implements this and returns `null` on any unresolved ID rather than guessing. Use lineup-group `normativeId` as the participant identity: score actions label the side as `Participant: 1|2` and carry the corresponding `Participant1Id`/`Participant2Id` normative ID; the group UUID `id` is never used for this join.
 
 ## Alternatives
 
@@ -14,7 +14,7 @@ Join on `fixturePlayerId` (rejected — action payloads never carry this field) 
 
 ## Consequences
 
-Any action whose player ID does not match a captured lineup's `normativeId` is silently quarantined (returns no normalized event) rather than mis-scored. `packages/txline-client/src/soccer-normalizer.ts` depends on this resolver for every action kind.
+Any action whose player ID or participant does not match the captured lineup's normative identities is silently quarantined (returns no normalized event) rather than mis-scored. `packages/txline-client/src/soccer-normalizer.ts` depends on this resolver for every action kind.
 
 ## Migration
 

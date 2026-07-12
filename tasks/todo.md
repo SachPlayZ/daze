@@ -2,6 +2,14 @@
 
 ## Plan
 
+- [x] Capture historical TxLINE payloads for player cards, penalty outcomes, and own goals; record evidence and unresolved gaps.
+- [x] Add fail-closed normalizers for captured player-level scoring actions and discard corrections.
+- [x] Add provider contracts plus duplicate, correction, player-join, and full-replay regression tests; promote only proven capabilities.
+- [x] Promote own goals through a strict, unique prior-payload amendment resolver; quarantine ambiguous amendments.
+- [ ] Promote penalty misses only after a real player-resolved penalty miss is captured.
+- [x] Add the canonical v1 player-scoring matrix, including positive/negative values and capability status.
+- [x] Add a versioned, fail-closed TxLINE soccer stat/phase registry; use it for final-score parsing and penalty-shootout exclusion.
+- [x] Add documented stat-key and numeric penalty-phase regression tests.
 - [x] Create implementation-ready logo raster exports from the supplied logo artwork.
 - [x] Package theme tokens, app icons, social artwork, and an agent handoff manifest.
 - [x] Validate exported asset dimensions, alpha channels, and file references.
@@ -42,12 +50,19 @@
 - [x] Write the 6 remaining ADRs required by AGENTS.md 3.3.
 - [x] Build the live match centre page and shareable result card.
 - [x] Add packages/observability (metrics registry + structured logging), wired into the worker.
-- [ ] P1 differentiators (Fantasy Pulse/StablePrice odds, TxLINE verification receipts, World Cup season table) -- explicitly deferred by PLAN.md itself until P0 is green; not started.
-- [ ] Vector brand SVGs (only PNG rasters exist) -- asset production, not an engineering task.
+- [x] Quick Pick / fan onboarding: equal-weight Build-manually/Quick-Pick CTAs, 30-second onboarding sheet (fan language, no protocol jargon), first-visit auto-show + reopen affordance.
+- [x] TxLINE Verified Event Receipt: per-ledger-row receipt badge (fixture ID, provider sequence, provider timestamp, content hash, proof status, settlement tx when available) in both the replay builder and live match centre.
+- [x] World Cup Season Table: cross-contest cumulative leaderboard (season total, best match, top-3 finishes, captain hit rate) + personal stats + shareable season card at /season.
+- [x] Fantasy Pulse / StablePrice odds -- built. Odds normalizer (`packages/txline-client/src/odds-normalizer.ts`), worker `oddsPollingLoop` (60s, isolated from scoring), `fixture_odds_snapshots` table (migration `0006`), `/api/contest/live` temporal-bracketing join, `OddsMoveBadge` component wired into `LiveMatchCentre`. No `CapabilityKey` added -- odds never gates scoring, decision recorded in ADR `0011`. Replay mode intentionally not wired: fixture `18175981` has a real empty odds array, so no real data exists to show there.
+- [x] Replace the placeholder hand-drawn `DazeWordmark` SVG (the "hand-drawn SVG substitute" `assets/brand/README.md` warned against) with the real approved raster wordmark, and wire branded favicon/apple-touch-icon/OG image -- previously the navbar/footer showed a fake squiggle logo and the browser tab showed the generic unbranded Next.js favicon.
+- [ ] Vector brand SVGs (only PNG rasters exist) -- asset production, not an engineering task. Note: the more urgent problem (fake placeholder logo shipping in the actual UI) is now fixed via real PNG exports; a true vector master remains a future nice-to-have, not a blocker.
 - [ ] Public production deployment, demo video recording, final submission -- requires human decisions (hosting provider/credentials, on-camera narration) this agent cannot make unilaterally.
 
 ## Verification
 
+- [x] Run provider normalizer, scoring, replay, and full boundary suites after capability promotion.
+- [x] Check the published scoring matrix matches the pure scoring constants and capability registry.
+- [x] Run the TxLINE normalizer contract suite and root boundary tests.
 - [x] Check logo treatment, palette, football-first positioning, and readable board layout.
 - [x] Type-check domain/scoring/config/client sources.
 - [x] Run frontend lint and production build.
@@ -61,6 +76,16 @@
 ## Review
 
 ### Changed
+
+- Completed a fresh post-lock, three-entry devnet contest proof: settlement guard rejected pre-lock publication; 50/30/20 claims then emptied the program vault and a repeat claim was rejected.
+
+- Added a strict own-goal amendment resolver for historical replay and durable worker ingestion; own-goal corrections now reverse and replace their ledger rows.
+
+- Captured the covered World Cup historical feed and promoted verified yellow cards, second yellows, straight reds, and regulation penalty goals; player joins use participant normative IDs and discard corrections reverse ledger effects.
+
+- Added a canonical player-scoring reference with every v1 addition, deduction, multiplier, and provider gate.
+
+- Added the documented TxLINE soccer stat/phase registry; final-score parsing uses total-goal keys and numeric penalty-shootout phases cannot score.
 
 - Added `assets/brand/daze-brand-kit-overview-v1.png`.
 - Added individual Daze panel references, approved raster logo references, and `assets/brand/README.md` handoff guidance.
@@ -104,6 +129,14 @@
 
 ### Verified
 
+- Current frontend `pnpm lint` and production `pnpm build` pass; root boundary suite passes 18/18 specs.
+
+- Applied the full idempotent migration set to Neon; wallet challenge, provider-event, ledger, settlement, and odds tables are present.
+
+- Fresh tier-6 contest `GNQKN39HarJk6K9fDqEgbcYfwr5ESR9T3kaV1n4eyp9h`: pre-lock settlement rejected with `6010`; post-lock claims paid 150/90/60 and vault `AjiUN4wssCGE1DmjUD7toN3PhwGvYxcFxGMvkVCpeUSz` reached zero; repeat claim rejected with `6006`.
+
+- Captured fixture `18175981` contains all documented base keys and period prefixes; `npm test` passes all 17 specs.
+
 - `pnpm lint`, `pnpm build` in `frontend/`.
 - Static TypeScript compile of packages.
 - Boundary test suite compiled and passed using TypeScript emit to a temporary test directory.
@@ -136,6 +169,8 @@
 - Running `/api/contest/readiness` with the configured public program ID returns `READY_FOR_CONTEST_CONFIGURATION`.
 
 ### Risks
+
+- Penalty misses remain disabled: all captured misses omit `Data.PlayerId`.
 
 - Penalty, own-goal, and card scoring remain disabled until their exact payload enums are captured and tested.
 - The program is deployed, but no valueless test mint, contest, entry, settlement, or claim transaction has been created or authorized.
@@ -198,3 +233,88 @@
 - Live match centre page and shareable result card build-out was in progress via a background agent as of this note; check its outcome before considering Phase 5/7's UI requirements (PLAN.md 7.1-7.5) closed.
 - No `contests` table exists off-chain; the whole stack (worker, bot, frontend) currently assumes exactly one active contest via `NEXT_PUBLIC_FANTASY_CONTEST_ID`/`FANTASY_CONTEST` env vars, consistent with how this repo was already built pre-session. Multi-contest support would need a real `contests` table and is out of scope for the hackathon P0 path.
 - Lock time (`lock_ts`) is still set manually per contest at creation, not derived from `kickoff_at - 5min` — see ADR 0005 for why, and what evidence would be needed to automate it.
+
+## Session: P1 differentiators (onboarding, verified receipts, season table)
+
+### Changed
+
+- Onboarding: `frontend/app/components/OnboardingSheet.tsx` (new) — one-screen fan-language explainer (formation, Quick Pick vs manual, captain x2/vice fallback, lock & follow live), auto-shows once via `localStorage["daze-onboarding-seen"]`, reopenable from nav. `ReplayBuilder.tsx` builder-controls now shows "Build manually" and "Quick Pick" as equal-weight primary buttons (previously Quick Pick was a subordinate secondary button with no manual-build CTA at all).
+- TxLINE Verified Event Receipt: new migration `packages/db/migrations/0005_contest_settlements.sql` (schema-only, populated by a future real settlement run). Joined `fantasy_ledger` -> `normalized_events` -> `raw_provider_events` in `/api/contest/live` for `content_hash`/`provider_timestamp`, plus a `contest_settlements` left-join for `tx_signature`. Historical replay path (`apps/api/src/historical-replay.ts`) computes the same provenance directly from the captured fixture JSON via the already-existing `contentHash` helper and a newly-exported `eventKey` (`packages/txline-client/src/soccer-normalizer.ts`). New `frontend/app/components/ReceiptBadge.tsx` renders an expandable "Verified by TxLINE" pill per ledger row in both `ReplayBuilder.tsx` and `LiveMatchCentre.tsx`.
+- World Cup Season Table: new `frontend/app/api/season/route.ts` (cross-contest `GROUP BY wallet` aggregate over `entry_totals` — no new contest-tracking table needed since `entry_totals` already carries `wallet`/`contest_id`/`total`/`rank`), captain hit rate computed from `locked_teams.canonical_json->>captainId` joined to `fantasy_ledger`. New `/season` page (`frontend/app/season/page.tsx` + `SeasonTable.tsx`) and `frontend/app/api/season/share-card/route.tsx` (cloned from the existing single-match share-card pattern). Nav links added both directions (`/` <-> `/season`), converted to `next/link`.
+- Fantasy Pulse / StablePrice odds: spike run once WebFetch's earlier session rate-limit reset. Traced TxLINE's docs index (`https://txline-docs.txodds.com/llms.txt`) to the real OpenAPI spec and confirmed `GET /api/odds/snapshot/{fixtureId}` (also `/api/odds/updates/...` and `/api/odds/stream`). Added `scripts/probe-txline-odds.mjs` (same guest-JWT pattern as `capture-txline-devnet.mjs`) and captured a real 30-record StablePrice payload for live fixture `18222446` — genuine evidence, not fabricated. The historical replay fixture (`18175981`) has no odds data (empty array), so the existing replay demo can't show Fantasy Pulse as-is. Building remains out of scope for this session per the approved plan (spike-then-decide, not spike-then-build).
+
+### Verified
+
+- `npm test` (root): 17/17 specs pass, unchanged.
+- `cd frontend && pnpm lint && pnpm build`: zero errors.
+- Live browser verification (Chrome DevTools MCP, fresh isolated context, 375px/1440px, light/dark): onboarding sheet auto-opens on first visit, dismisses and persists via `localStorage`, reopens from nav; Build-manually/Quick-Pick equal-weight buttons render and both work; ran a full Quick-Pick -> Check-XI flow against the real captured France-Sweden fixture and confirmed all 17 impact rows render a working "Verified by TxLINE" receipt badge that expands to real fixture ID/provider sequence/timestamp/content hash/proof status; `/season` loads with an honest empty state (no settled contests yet — real, not fabricated) and both nav directions work. Zero new console errors after the fix below.
+- Found and fixed one real bug during verification: `OnboardingSheet`'s original lazy `useState(() => typeof window !== "undefined" && ...)` initializer caused a guaranteed hydration mismatch on every first-time visit (SSR renders no dialog since `window` is undefined; client hydration then rendered one immediately). Fixed with the standard post-hydration `useEffect` + `setState` pattern (with a scoped `eslint-disable` for `react-hooks/set-state-in-effect`, since an effect is unavoidable for this class of client-only-after-mount problem).
+- Applied migration `0005_contest_settlements.sql` to the live Neon DB via a one-off `ensureSchema()` run (idempotent, schema-only, no data change).
+
+### Risks
+
+- Season table data will look sparse (at most one contest's worth of rows) until more contests are created and settled off-chain — this is real/correct behavior per the existing single-active-contest architecture, not a bug; confirmed with the user before shipping.
+- `contest_settlements` has no rows yet for the current active contest, so every live receipt currently shows "Settlement pending" — this will resolve automatically once a real settlement is published and the script (not yet updated) writes to that table. Wiring the settlement script's insert was left out of this session's scope to avoid any new devnet transaction.
+
+### Follow-ups
+
+- Fantasy Pulse / StablePrice odds spike still needs to run: check `https://txline.txodds.com/documentation` and `/api-reference` for a real odds endpoint, attempt one authenticated probe via `TxlineClient.getJson`, and only build the capability + UI if a real payload is captured.
+- The settlement-publication script (wherever a future real settlement run happens) should insert into `contest_settlements` so receipts show a real Solana tx reference instead of "Settlement pending" once a contest actually settles.
+
+## Session: Fantasy Pulse (Market Pulse odds display) build
+
+### Changed
+
+- New `packages/txline-client/src/odds-normalizer.ts`: versioned (`txline-odds-v1`), fail-closed decoder for TxLINE `StablePrice` odds payloads (`decodeOddsMarket`, `decodeOddsSnapshot`, `extractMatchOdds`), following the same pattern as `soccer-stat-registry.ts`.
+- New migration `packages/db/migrations/0006_fixture_odds_snapshots.sql`: `fixture_odds_snapshots(fixture_id, snapshot_ts, raw_json)`, additive only, never referenced by scoring/ledger/settlement.
+- `apps/worker/src/main.ts`: added `captureOddsSnapshot` + `oddsPollingLoop` (60s interval, real TxLINE endpoint, errors caught/logged, fully isolated from `pipeline.ts` and the score-scoring path).
+- `frontend/app/api/contest/live/route.ts`: additive odds join -- reads all snapshots for the active fixture, brackets each ledger event's `provider_timestamp` against the nearest snapshot before/after in application code, flags `odds_stale` if the nearest "after" snapshot is >5 minutes past the event. Ledger query itself untouched.
+- New `frontend/app/components/OddsMoveBadge.tsx`: clones `ReceiptBadge`'s pill+expandable-panel pattern; renders nothing when no odds data exists for an event (no fabrication); shows before/after for all three 1X2 outcomes plus a fixed "display only" disclaimer; wired into `LiveMatchCentre.tsx` next to the existing `ReceiptBadge`.
+- New CSS in `frontend/app/globals.css`: `.odds-move-*` classes, semantic tokens only (`--positive`/`--negative`/`--warning`/`--muted`), both themes covered automatically.
+- New ADR `docs/decisions/0011-market-pulse-odds-display.md`: records the decision not to add a `CapabilityKey` for odds (the VERIFIED/SHADOW/DISABLED gate controls ledger-write permission, which odds never has), the worker-poll-not-per-request architecture, and why replay mode is explicitly not wired.
+- New test `tests/txline/odds-normalizer.spec.ts`: inline fail-closed assertions (unknown market type, `"NA"` probability, missing fields) plus real-fixture assertions against the already-captured `odds-snapshot-18222446.json` (exact decimal odds `1.751/3.621/6.544`) and the empty-array case from `odds-snapshot-18175981.json`.
+- Explicitly not touched: `packages/config/src/capabilities.ts`, `packages/scoring/*`, `ReplayBuilder.tsx`, `apps/api/src/historical-replay.ts`, migrations `0001`-`0005`.
+
+### Verified
+
+- `npm test` (root): 18/18 specs pass (17 prior + new `odds-normalizer.spec.ts`).
+- `tsc --noEmit` clean for both `apps/worker` and `frontend`.
+- `cd frontend && pnpm lint && pnpm build`: zero errors.
+- Live smoke test: ran the exact insert/query path the worker's `oddsPollingLoop` uses against the real TxLINE devnet endpoint and the live Neon DB for fixture `18222446` -- HTTP call succeeded, row written to `fixture_odds_snapshots`, read back correctly. Returned 0 markets because that fixture is no longer live at the time of this run (odds are live-fixture-scoped, consistent with the original spike's finding) -- this confirms the empty-payload path degrades gracefully exactly as designed, not a bug.
+- Browser check: homepage loads clean, zero console errors introduced by this change (one pre-existing unrelated form-field a11y warning). No currently-configured live contest with active odds was available in this session to visually confirm a populated badge in the browser.
+
+### Risks
+
+- No currently-live TxLINE fixture existed during this session, so the `OddsMoveBadge` populated (non-null before/after) rendering path is verified by type-safety, unit tests, and a real DB/API round-trip, but not by an actual browser screenshot showing populated odds. Should be re-checked visually the next time a real fixture is live.
+- `fixture_odds_snapshots` has no pruning; acceptable at hackathon scale (documented in ADR `0011`), would need a retention policy for long-term production use.
+
+### Follow-ups
+
+- None blocking. If a future session wires Fantasy Pulse into replay mode, it needs either a real replay fixture captured with concurrent odds data, or an explicit "no odds captured for this historical fixture" UI state -- never a synthesized value (see ADR `0011` migration note).
+
+## Session: ship real Daze logo, branded favicon/apple-icon/OG image
+
+### Changed
+
+- `frontend/app/components/DazeWordmark.tsx`: replaced the placeholder hand-drawn inline `<svg>` (an abstract curved-line squiggle, not real Daze artwork -- exactly the "hand-drawn SVG substitute" `assets/brand/README.md` warns against) with the real approved raster wordmark, using `next/image` with `fill` and a CSS-only `[data-theme="dark"]` swap between `daze-wordmark-ink.png` (light theme) and `daze-wordmark-dark.png` (dark theme). No JS theme branching -- the theme is only known post-hydration (`ThemeToggle.tsx` sets `data-theme` in a `useEffect`, no cookie), so both images render identically on server and client and CSS alone decides visibility, avoiding any hydration mismatch.
+- `frontend/app/globals.css`: `.wordmark` now sizes a positioned wrapper (`aspect-ratio:1200/435` to match the real PNG's 2.76:1 ratio, was 3.35:1 for the old SVG) instead of an inline SVG directly.
+- `frontend/app/icon.png` / `frontend/app/apple-icon.png` (new, copied from the already-approved `frontend/public/brand/daze-favicon-32.png` / `daze-apple-touch-icon.png`): Next's static file-convention auto-detects these, no metadata code needed. Removed the generic unbranded Next.js scaffold files that were shipping instead: `favicon.ico` (the only one of three actually being served), `favicon-16x16.png` and `favicon-32x32.png` (both already dead -- wrong filenames for Next's convention, never served), and a stray `apple-touch-icon.png` (same generic scaffold timestamp, also wrong filename for Next's convention).
+- `frontend/app/layout.tsx`: added `openGraph.images` pointing at the real `daze-og-default.png` export (previously no OG image was configured at all), plus `metadataBase` sourced from `NEXT_PUBLIC_APP_URL` so the OG image resolves to an absolute URL once a real production URL is configured (currently unset -- see the still-open deployment item above).
+
+### Verified
+
+- `cd frontend && pnpm lint && pnpm build`: zero errors. (Initial pass had 2 `no-img-element` warnings from raw `<img>` tags; fixed by switching to `next/image` with `fill`, which fit naturally since the component already needed absolute-positioned overlay images.) Build output confirms `/icon.png` and `/apple-icon.png` are generated static routes.
+- Browser check (Chrome DevTools MCP): real lowercase "daze" wordmark renders in both nav and footer, replacing the old squiggle. Toggled dark theme live -- the `dark` variant swaps in correctly with good contrast on the match-night background, no layout shift, no new console errors (same one pre-existing unrelated form-field a11y warning as before this change). `curl`'d `/icon.png` and `/apple-icon.png` from the running dev server and byte-diffed them against the source exports in `frontend/public/brand/` -- exact match, confirming the served favicon/apple-touch-icon are the real approved artwork, not a generic default.
+
+### Risks
+
+- `metadataBase`/OG image resolves to `http://localhost:3000` until `NEXT_PUBLIC_APP_URL` is set in the deployed environment (expected -- no production URL exists yet, tracked under the existing "Public production deployment" item).
+- `DazeMark` standalone-mark component remains unused -- no caller yet (nothing renders a standalone mark outside the icon files); wire it when a real caller needs it.
+
+### Fix (user-reported)
+
+- User caught that the dark-theme wordmark "looked off." Root cause: `daze-wordmark-dark.png` is byte-identical (same SHA-1) to `daze-wordmark-ink.png` -- both are the same dark espresso-brown wordmark, not a light-colored variant for dark backgrounds despite the filename. The correct dark-surface asset is `daze-wordmark-cream.png` (confirmed via direct pixel read: pale cream strokes, fully transparent background), which is exactly what AGENTS.md's own brand contract calls "the primary gradient/dark logo." Swapped the dark-theme `<Image>` source from `-dark.png` to `-cream.png` in `DazeWordmark.tsx`. Re-verified: lint/build clean, browser check in both themes shows correct contrast, no console errors.
+
+### Follow-ups
+
+- None blocking. The vector-SVG master question (todo item above) is unchanged and still open, but no longer urgent -- the product no longer ships a fake placeholder logo.

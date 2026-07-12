@@ -13,7 +13,7 @@ export function scoringCapabilities(): Partial<Record<ScoringAction, Capability>
     OWN_GOAL: capabilityRegistry.OWN_GOAL.state,
     YELLOW_CARD: capabilityRegistry.YELLOW_CARD.state,
     DIRECT_RED_CARD: capabilityRegistry.RED_CARD.state,
-    SECOND_YELLOW_ADJUSTMENT: capabilityRegistry.RED_CARD.state,
+    SECOND_YELLOW_ADJUSTMENT: capabilityRegistry.SECOND_YELLOW.state,
     CLEAN_SHEET: capabilityRegistry.GOAL.state,
     GOALS_CONCEDED: capabilityRegistry.GOAL.state,
   };

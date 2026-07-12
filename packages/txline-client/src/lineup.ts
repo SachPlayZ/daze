@@ -26,7 +26,8 @@ export function parseLineupAction(raw: unknown): CapturedLineupPlayer[] {
   if (!Array.isArray(root.Lineups)) throw new Error("Lineup action has no Lineups array.");
   return root.Lineups.flatMap((group) => {
     const team = asRecord(group, "Lineup participant");
-    const participantId = stringField(team, "id");
+    // Score actions' Participant1Id/Participant2Id use the team's normativeId, not its UUID `id`.
+    const participantId = stringField(team, "normativeId");
     if (!Array.isArray(team.lineups)) throw new Error("Lineup participant has no lineups array.");
     return team.lineups.map((lineup) => {
       const item = asRecord(lineup, "Lineup player");
@@ -41,4 +42,3 @@ export function parseLineupAction(raw: unknown): CapturedLineupPlayer[] {
 export function resolveSoccerActionPlayer(actionPlayerId: string | number, lineup: CapturedLineupPlayer[]): CapturedLineupPlayer | null {
   return lineup.find((player) => player.normativeId === String(actionPlayerId)) ?? null;
 }
-

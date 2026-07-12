@@ -128,10 +128,16 @@ export async function handleProviderMessage(pool: Pool, contestId: string, raw: 
   if (!result.accepted || !result.event) return;
   const runtime = runtimes.get(result.event.fixtureId);
   if (!runtime) return;
-  const normalized = normalizeSoccerScoreAction(raw, runtime.captured);
   const rawRow = await pool.query<{ id: number }>("select id from raw_provider_events where content_hash = $1", [result.event.contentHash]);
   const rawEventId = rawRow.rows[0]?.id;
-  if (!normalized || rawEventId === undefined) return;
+  if (rawEventId === undefined) return;
+  const action = raw && typeof raw === "object" && !Array.isArray(raw) ? (raw as Record<string, unknown>).Action : null;
+  const priorActions = action === "action_amend" ? (await pool.query<{ raw_json: unknown }>(
+    "select raw_json from raw_provider_events where fixture_id = $1 and id < $2 order by id desc limit 2500",
+    [runtime.fixtureId, rawEventId],
+  )).rows.map((row) => row.raw_json) : undefined;
+  const normalized = normalizeSoccerScoreAction(raw, runtime.captured, { priorActions });
+  if (!normalized) return;
   await pool.query(
     `insert into normalized_events (fixture_id, source_event_key, revision, parser_version, normalized_json, raw_event_id) values ($1, $2, $3, $4, $5, $6)
      on conflict (fixture_id, source_event_key, revision) do nothing`,

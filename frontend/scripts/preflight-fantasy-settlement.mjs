@@ -44,7 +44,7 @@ const connection = new Connection(rpcUrl, "confirmed");
 const latest = await connection.getLatestBlockhash("confirmed");
 const transaction = new Transaction({ feePayer: authority, blockhash: latest.blockhash, lastValidBlockHeight: latest.lastValidBlockHeight }).add(instruction);
 const simulation = await connection.simulateTransaction(transaction, undefined, { sigVerify: false, replaceRecentBlockhash: true, commitment: "confirmed" });
-if (simulation.value.err) throw new Error(`Settlement simulation failed: ${JSON.stringify(simulation.value.err)}`);
+if (simulation.value.err) throw new Error(`Settlement simulation failed: ${JSON.stringify(simulation.value.err)}\n${(simulation.value.logs ?? []).join("\n")}`);
 const payoutProofs = payouts.map((payout) => ({ entry: payout.entry.toBase58(), amount: payout.amount.toString(), proofHex: payout.proof.map((node) => node.toString("hex")) }));
 const details = { cluster: "devnet", programId: programId.toBase58(), contest: contest.toBase58(), mint: mint.toBase58(), vault: vault.toBase58(), settlement: settlement.toBase58(), root: root.toString("hex"), payoutTotal: payoutTotal.toString(), payouts: payoutProofs };
 if (!send) {

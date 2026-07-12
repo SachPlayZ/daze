@@ -1,11 +1,13 @@
 import { txlineSoccerWorldCupV1 } from "../../../packages/config/src/position-mapping";
+import { capabilityRegistry } from "../../../packages/config/src/capabilities";
 import { quickPick, validateTeam, type DraftTeam, type FixturePlayer } from "../../../packages/domain/src";
 import { rankEntries } from "../../../packages/domain/src/ranking";
 import { evaluateFixtureReadiness } from "../../../packages/domain/src/readiness";
 import { entryTotal, type LedgerRow } from "../../../packages/scoring/src";
 import { fullReplay } from "../../../packages/scoring/src/projector";
-import { normalizeSoccerHistoricalActions } from "../../../packages/txline-client/src/soccer-normalizer";
+import { eventKey, normalizeSoccerHistoricalActions } from "../../../packages/txline-client/src/soccer-normalizer";
 import { parseLineupAction } from "../../../packages/txline-client/src/lineup";
+import { contentHash } from "../../../packages/txline-client/src/identity";
 
 type RawScore = Record<string, unknown>;
 
@@ -35,14 +37,14 @@ export function validateHistoricalReplayDraft(rawActions: unknown[], draft: Draf
   return { valid: errors.length === 0, errors };
 }
 
-export type ReplayImpact = { action: string; playerName: string; elapsedSec: number | null; basePoints: number; appliedPoints: number; reversed: boolean };
+export type ReplayImpact = { action: string; playerName: string; elapsedSec: number | null; basePoints: number; appliedPoints: number; reversed: boolean; sourceEventKey: string; providerTimestamp: string | null; contentHash: string | null };
 
-export function projectHistoricalReplayDraft(rawActions: unknown[], draft: DraftTeam): { valid: boolean; errors: string[]; total: number | null; rows: LedgerRow[]; impacts: ReplayImpact[]; reconciling: boolean } {
+export function projectHistoricalReplayDraft(rawActions: unknown[], draft: DraftTeam): { valid: boolean; errors: string[]; total: number | null; rows: LedgerRow[]; impacts: ReplayImpact[]; reconciling: boolean; fixtureId: string | null } {
   const validation = validateHistoricalReplayDraft(rawActions, draft);
-  if (!validation.valid) return { ...validation, total: null, rows: [], impacts: [], reconciling: true };
+  if (!validation.valid) return { ...validation, total: null, rows: [], impacts: [], reconciling: true, fixtureId: null };
   const actions = rawActions.map(record);
   const lineupRecord = [...actions].reverse().find((action) => action.Action === "lineups" && action.Confirmed === true);
-  if (!lineupRecord) return { valid: false, errors: ["Historical replay has no confirmed lineup action."], total: null, rows: [], impacts: [], reconciling: true };
+  if (!lineupRecord) return { valid: false, errors: ["Historical replay has no confirmed lineup action."], total: null, rows: [], impacts: [], reconciling: true, fixtureId: null };
   const lineup = parseLineupAction(lineupRecord);
   const replay = buildHistoricalReplayReadModel(actions);
   const events = normalizeSoccerHistoricalActions(actions, lineup);
@@ -51,13 +53,27 @@ export function projectHistoricalReplayDraft(rawActions: unknown[], draft: Draft
     SUBSTITUTE_APPEARANCE: "VERIFIED",
     APPEARANCE_60_REACHED: "VERIFIED",
     GOAL: "VERIFIED",
+    PENALTY_GOAL: capabilityRegistry.PENALTY_GOAL.state,
+    OWN_GOAL: capabilityRegistry.OWN_GOAL.state,
+    YELLOW_CARD: capabilityRegistry.YELLOW_CARD.state,
+    DIRECT_RED_CARD: capabilityRegistry.RED_CARD.state,
+    SECOND_YELLOW_ADJUSTMENT: capabilityRegistry.SECOND_YELLOW.state,
     CLEAN_SHEET: "VERIFIED",
     GOALS_CONCEDED: "VERIFIED",
   });
   const eventTimes = new Map(events.map((event) => [event.eventKey, "elapsedSec" in event ? event.elapsedSec : null]));
   const players = new Map(replay.players.map((player) => [player.fixturePlayerId, player.preferredName]));
-  const impacts = state.rows.map((row) => ({ action: row.action, playerName: players.get(row.playerId) ?? "Unknown player", elapsedSec: eventTimes.get(row.sourceEventKey) ?? null, basePoints: row.basePoints, appliedPoints: row.appliedPoints, reversed: Boolean(row.reversed) }));
-  return { valid: true, errors: [], total: entryTotal(state.rows), rows: state.rows, impacts, reconciling: replay.eventSummary.settlementBlocked };
+  const rawByEventKey = new Map<string, RawScore>();
+  for (const action of actions) { try { rawByEventKey.set(eventKey(action), action); } catch { /* record has no stable event identity, skip */ } }
+  const impacts = state.rows.map((row) => {
+    const raw = rawByEventKey.get(row.sourceEventKey);
+    return {
+      action: row.action, playerName: players.get(row.playerId) ?? "Unknown player", elapsedSec: eventTimes.get(row.sourceEventKey) ?? null,
+      basePoints: row.basePoints, appliedPoints: row.appliedPoints, reversed: Boolean(row.reversed),
+      sourceEventKey: row.sourceEventKey, providerTimestamp: raw && typeof raw.Ts === "number" ? new Date(raw.Ts).toISOString() : null, contentHash: raw ? contentHash(raw) : null,
+    };
+  });
+  return { valid: true, errors: [], total: entryTotal(state.rows), rows: state.rows, impacts, reconciling: replay.eventSummary.settlementBlocked, fixtureId: replay.fixtureId };
 }
 
 /** Judge Mode uses only deterministic teams generated from real captured lineups and events. */
@@ -104,7 +120,7 @@ export function buildHistoricalReplayReadModel(rawActions: unknown[]): Historica
   const fixtureId = text(actions[0], "FixtureId");
   const readiness = evaluateFixtureReadiness(fixtureId, lineup.map((player) => ({ ...player, positionId: player.positionId, unitId: player.unitId })), txlineSoccerWorldCupV1);
   const normalized = normalizeSoccerHistoricalActions(actions, lineup);
-  const normalizedRelevant = normalized.filter((event) => event.kind === "GOAL" || event.kind === "SUBSTITUTION");
+  const normalizedRelevant = normalized.filter((event) => event.kind === "GOAL" || event.kind === "SUBSTITUTION" || event.kind === "CARD" || event.kind === "PENALTY_ATTEMPT");
   const lineupGroups = record(lineupRecord).Lineups;
   if (!Array.isArray(lineupGroups)) throw new Error("Historical lineup groups are invalid.");
   const teamName = (participantId: string): string => {
@@ -126,7 +142,10 @@ export function buildHistoricalReplayReadModel(rawActions: unknown[]): Historica
       try { const amendmentData = record(amendment.Data); return amendmentData.Action === "substitution" && clockSeconds({ Clock: record(amendmentData.Previous).Clock }) === clockSeconds(action); } catch { return false; }
     }));
   }).length + actions.filter((action) => { try { return action.Action === "action_amend" && record(action.Data).Action === "substitution"; } catch { return false; } }).length;
-  const unresolvedScoringActions = Math.max(0, expectedGoalCount + expectedSubstitutionCount - normalizedRelevant.length);
+  const expectedYellowCardCount = actions.filter((action) => action.Action === "yellow_card" && action.Confirmed === true).filter((action) => { try { return record(action.Data).PlayerId !== undefined; } catch { return false; } }).length;
+  const expectedRedCardCount = actions.filter((action) => action.Action === "red_card" && action.Confirmed === true).filter((action) => { try { const data = record(action.Data); return data.PlayerId !== undefined && (data.Type === "StraightRed" || data.Type === "SecondYellow"); } catch { return false; } }).length;
+  const expectedPenaltyGoalCount = actions.filter((action) => action.Action === "penalty_outcome" && action.Confirmed === true).filter((action) => { try { const data = record(action.Data); return data.Outcome === "Scored" && data.PlayerId !== undefined && action.StatusId !== 12; } catch { return false; } }).length;
+  const unresolvedScoringActions = Math.max(0, expectedGoalCount + expectedSubstitutionCount + expectedYellowCardCount + expectedRedCardCount + expectedPenaltyGoalCount - normalizedRelevant.length);
   return {
     fixtureId,
     historical: true,
