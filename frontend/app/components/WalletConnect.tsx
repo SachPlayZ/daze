@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
 type SolanaWallet = {
   isPhantom?: boolean;
@@ -20,6 +20,13 @@ const signatureBase64 = (signature: Uint8Array) => {
 export function WalletConnect() {
   const [label, setLabel] = useState("Connect wallet");
   const [busy, setBusy] = useState(false);
+  useEffect(() => {
+    let active = true;
+    fetch("/api/auth/session", { cache: "no-store" }).then(async (response) => response.ok ? response.json() as Promise<{ wallet: string | null }> : { wallet: null }).then((data) => {
+      if (active && data.wallet) { setLabel(`${data.wallet.slice(0, 4)}…${data.wallet.slice(-4)}`); window.dispatchEvent(new CustomEvent(WALLET_EVENT, { detail: { wallet: data.wallet } })); }
+    }).catch(() => {});
+    return () => { active = false; };
+  }, []);
   const connect = async () => {
     const wallet = window.solana;
     if (!wallet?.isPhantom) { setLabel("Install Phantom"); window.open("https://phantom.app/", "_blank", "noopener,noreferrer"); return; }
