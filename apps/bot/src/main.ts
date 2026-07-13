@@ -5,7 +5,6 @@ import { db, ensureSchema } from "./db.js";
 const log = (...args: unknown[]) => console.log(new Date().toISOString(), ...args);
 
 const TOKEN = process.env.TELEGRAM_BOT_TOKEN ?? "";
-const CONTEST_ID = process.env.NEXT_PUBLIC_FANTASY_CONTEST_ID ?? process.env.FANTASY_CONTEST ?? "";
 const APP_URL = (process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000").replace(/\/$/, "");
 
 if (!TOKEN) { log("Daze bot: TELEGRAM_BOT_TOKEN is not set. Exiting."); process.exit(1); }
@@ -119,22 +118,18 @@ async function handleTeam(chatId: number, telegramUserId: string): Promise<void>
     await reply(chatId, "Your Telegram account is not linked yet. Use /link to connect your wallet first.");
     return;
   }
-  if (!CONTEST_ID) {
-    await reply(chatId, "No active contest is configured right now.");
-    return;
-  }
-  const res = await db().query<{ canonical_json: { formation: string; playerIds: string[]; captainId: string; viceCaptainId: string }; locked_at: Date }>(
-    "select canonical_json, locked_at from locked_teams where contest_id = $1 and wallet = $2",
-    [CONTEST_ID, wallet],
+  const res = await db().query<{ contest_id: string; canonical_json: { formation: string; playerIds: string[]; captainId: string; viceCaptainId: string }; locked_at: Date }>(
+    "select contest_id, canonical_json, locked_at from locked_teams where wallet = $1 order by locked_at desc limit 1",
+    [wallet],
   );
   if (!res.rows[0]) {
-    await reply(chatId, `You haven't locked a team for contest ${CONTEST_ID} yet.\nVisit ${APP_URL} to build your XI.`);
+    await reply(chatId, `You haven't locked a team yet.\nVisit ${APP_URL} to build your XI.`);
     return;
   }
-  const { canonical_json: team, locked_at } = res.rows[0];
+  const { contest_id: contestId, canonical_json: team, locked_at } = res.rows[0];
   const lockedTs = new Date(locked_at).toUTCString().replace(/ GMT$/, " UTC");
   await reply(chatId,
-    `Your locked squad for contest ${CONTEST_ID}:\n\n` +
+    `Your locked squad for contest ${contestId}:\n\n` +
     `Formation: ${team.formation}\n` +
     `Players (note: player IDs shown — names available on the web app):\n${team.playerIds.map((id) => `  • ${id}`).join("\n")}\n\n` +
     `Captain: player ${team.captainId}\n` +
@@ -149,22 +144,17 @@ async function handlePoints(chatId: number, telegramUserId: string): Promise<voi
     await reply(chatId, "Your Telegram account is not linked yet. Use /link to connect your wallet first.");
     return;
   }
-  if (!CONTEST_ID) {
-    await reply(chatId, "No active contest is configured right now.");
-    return;
-  }
-  const entryId = `${CONTEST_ID}:${wallet}`;
-  const res = await db().query<{ total: number; rank: number | null }>(
-    "select total, rank from entry_totals where entry_id = $1",
-    [entryId],
+  const res = await db().query<{ contest_id: string; total: number; rank: number | null }>(
+    "select contest_id, total, rank from entry_totals where wallet = $1 order by updated_at desc limit 1",
+    [wallet],
   );
   if (!res.rows[0]) {
-    await reply(chatId, `You haven't entered contest ${CONTEST_ID} yet.\nVisit ${APP_URL} to lock your team and enter.`);
+    await reply(chatId, `You haven't entered a contest yet.\nVisit ${APP_URL} to lock your team and enter.`);
     return;
   }
-  const { total, rank } = res.rows[0];
+  const { contest_id: contestId, total, rank } = res.rows[0];
   const rankText = rank !== null ? `Rank: #${rank}` : "Rank: not yet assigned";
-  await reply(chatId, `Your score for contest ${CONTEST_ID}:\nTotal points: ${total}\n${rankText}\n\nFull leaderboard: ${APP_URL}`);
+  await reply(chatId, `Your score for contest ${contestId}:\nTotal points: ${total}\n${rankText}\n\nFull leaderboard: ${APP_URL}`);
 }
 
 async function handleSettings(chatId: number, telegramUserId: string, args: string): Promise<void> {
@@ -336,7 +326,7 @@ async function pollLoop(): Promise<never> {
 async function main(): Promise<void> {
   await ensureSchema();
   log("Daze bot: schema ready.");
-  log(`Daze bot: polling for updates (contest=${CONTEST_ID || "not configured"}, app=${APP_URL})`);
+  log(`Daze bot: polling for updates (app=${APP_URL})`);
   await pollLoop();
 }
 
