@@ -39,3 +39,14 @@
 .market-pulse-teaser{padding:56px 24px;max-width:1180px;margin:auto;border-top:1px solid var(--border)}.market-pulse-teaser h2{font-size:clamp(1.8rem,3.4vw,2.6rem);letter-spacing:-.045em;margin:10px 0 14px}.market-pulse-teaser p{color:var(--muted);font-size:16px;line-height:1.55;max-width:560px}.market-pulse-states{display:flex;flex-wrap:wrap;gap:8px;margin-top:22px}@media(max-width:720px){.market-pulse-teaser{padding:40px 16px}}
 .season-teaser{padding:0 24px 64px;max-width:1180px;margin:auto}.season-teaser .judge-board{margin-top:20px}.season-teaser p{color:var(--muted);font-size:15px;margin-top:4px;max-width:520px}.season-teaser .secondary-button{margin-top:20px;display:inline-flex;align-items:center;gap:8px;text-decoration:none}@media(max-width:720px){.season-teaser{padding:0 16px 40px}}
 .closing-cta{padding:72px 24px;max-width:1180px;margin:32px auto 0;text-align:center;border-radius:28px;background:var(--gradient)}.closing-cta h2{font-size:clamp(2rem,4.2vw,3rem);letter-spacing:-.05em;margin:0 auto 14px;max-width:640px}.closing-cta p{color:var(--muted);font-size:16px;margin:0 auto 26px;max-width:480px}@media(max-width:720px){.closing-cta{padding:48px 16px;margin-top:20px;border-radius:20px}}
+.content-grid-single{grid-template-columns:1fr;max-width:900px}
+.fixtures-page{padding:64px 24px;max-width:1180px;margin:auto;display:grid;gap:24px}@media(max-width:720px){.fixtures-page{padding:32px 16px;gap:16px}}
+.fixture-list{margin-top:16px;border:1px solid var(--border);border-radius:14px;overflow:hidden}
+.fixture-row{display:flex;align-items:center;justify-content:space-between;gap:14px;padding:14px 16px;border-top:1px solid var(--border);background:var(--surface-raised);text-decoration:none;color:inherit}
+.fixture-list .fixture-row:first-child{border-top:0}
+.fixture-row strong{display:block;font-size:15px;font-weight:650}
+.fixture-row small{display:block;color:var(--muted);font-size:12px;margin-top:2px}
+.fixture-row span.status{flex-shrink:0}
+.fixture-row-link{cursor:pointer}
+.fixture-row-link:hover{background:var(--background-soft)}
+@media(max-width:720px){.fixture-row{flex-direction:column;align-items:flex-start;gap:6px}}

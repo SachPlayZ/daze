@@ -18,9 +18,9 @@ async function importFixtures(): Promise<void> {
       if (!id) continue;
       const kickoff = typeof fixture.StartTime === "number" ? new Date(fixture.StartTime) : new Date();
       await db().query(
-        `insert into fixtures (id, lifecycle, kickoff_at, feed_state, home_participant_id, away_participant_id, updated_at) values ($1, 'DISCOVERED', $2, 'WAITING_FOR_PLAYER_DATA', $3, $4, now())
-         on conflict (id) do update set kickoff_at = excluded.kickoff_at, home_participant_id = excluded.home_participant_id, away_participant_id = excluded.away_participant_id, updated_at = now()`,
-        [id, kickoff.toISOString(), String(fixture.Participant1Id ?? ""), String(fixture.Participant2Id ?? "")],
+        `insert into fixtures (id, lifecycle, kickoff_at, feed_state, home_participant_id, away_participant_id, home_team_name, away_team_name, competition, updated_at) values ($1, 'DISCOVERED', $2, 'WAITING_FOR_PLAYER_DATA', $3, $4, $5, $6, $7, now())
+         on conflict (id) do update set kickoff_at = excluded.kickoff_at, home_participant_id = excluded.home_participant_id, away_participant_id = excluded.away_participant_id, home_team_name = excluded.home_team_name, away_team_name = excluded.away_team_name, competition = excluded.competition, updated_at = now()`,
+        [id, kickoff.toISOString(), String(fixture.Participant1Id ?? ""), String(fixture.Participant2Id ?? ""), String(fixture.Participant1 ?? ""), String(fixture.Participant2 ?? ""), String(fixture.Competition ?? "")],
       );
     }
     log(`fixture-importer: synced ${fixtures.length} fixtures.`);

@@ -20,7 +20,8 @@ const formations: Formation[] = ["4-4-2", "4-3-3", "4-5-1", "3-5-2", "3-4-3", "5
 const positions: Position[] = ["GK", "DEF", "MID", "FWD"];
 const emptyDraft: Draft = { formation: "4-3-3", playerIds: [], captainId: "", viceCaptainId: "" };
 
-export function ReplayBuilder() {
+export function ReplayBuilder({ fixtureId = "18175981" }: { fixtureId?: string }) {
+  const isLiveContestFixture = fixtureId === (process.env.NEXT_PUBLIC_FANTASY_FIXTURE_ID ?? "18175981");
   const [replay, setReplay] = useState<Replay | null>(null);
   const [draft, setDraft] = useState<Draft>(emptyDraft);
   const [message, setMessage] = useState("Loading real TxLINE replay lineup.");
@@ -39,9 +40,9 @@ export function ReplayBuilder() {
   }, []);
   useEffect(() => {
     let active = true;
-    fetch("/api/replay/18175981", { cache: "no-store" }).then(async (response) => response.ok ? response.json() as Promise<Replay> : Promise.reject()).then((data) => { if (active) { setReplay(data); setMessage(data.readiness.ready ? "Choose a formation and build your XI." : data.readiness.reasons.join(" ")); } }).catch(() => { if (active) setMessage("Historical lineup is unavailable. Try again shortly."); });
+    fetch(`/api/replay/${fixtureId}`, { cache: "no-store" }).then(async (response) => response.ok ? response.json() as Promise<Replay> : Promise.reject()).then((data) => { if (active) { setReplay(data); setMessage(data.readiness.ready ? "Choose a formation and build your XI." : data.readiness.reasons.join(" ")); } }).catch(() => { if (active) setMessage("Historical lineup is unavailable. Try again shortly."); });
     return () => { active = false; };
-  }, []);
+  }, [fixtureId]);
   useEffect(() => { let active = true; fetch("/api/contest/readiness", { cache: "no-store" }).then(async (response) => response.ok ? response.json() as Promise<ContestReadiness> : null).then((next) => { if (active) setContestReadiness(next); }).catch(() => {}); return () => { active = false; }; }, []);
   const selected = useMemo(() => new Set(draft.playerIds), [draft.playerIds]);
   const selectedPlayers = replay?.players.filter((player) => selected.has(player.fixturePlayerId)) ?? [];
@@ -51,7 +52,7 @@ export function ReplayBuilder() {
     return { ...current, playerIds: [...current.playerIds, id] };
   });
   const post = async (body: unknown) => {
-    const response = await fetch("/api/replay/18175981/draft", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
+    const response = await fetch(`/api/replay/${fixtureId}/draft`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
     if (!response.ok) throw new Error("Replay command failed.");
     return response.json() as Promise<{ team?: Draft; valid?: boolean; errors?: string[]; projection?: Projection }>;
   };
@@ -85,7 +86,7 @@ export function ReplayBuilder() {
   };
   const quickPick = async () => {
     setBusy(true); setMessage("Building a valid XI from the verified lineup.");
-    try { const result = await post({ action: "QUICK_PICK", formation: draft.formation, seed: 18175981 }); if (!result.team) throw new Error(); setDraft(result.team); setMessage("Quick Pick is ready. Review captain and vice-captain before entry."); } catch { setMessage("Quick Pick is unavailable. Try again shortly."); } finally { setBusy(false); }
+    try { const result = await post({ action: "QUICK_PICK", formation: draft.formation, seed: Number(fixtureId) }); if (!result.team) throw new Error(); setDraft(result.team); setMessage("Quick Pick is ready. Review captain and vice-captain before entry."); } catch { setMessage("Quick Pick is unavailable. Try again shortly."); } finally { setBusy(false); }
   };
   const validate = async () => {
     setBusy(true); setMessage("Checking your XI against the official formation rules.");
@@ -105,7 +106,8 @@ export function ReplayBuilder() {
     <div className="judge-board"><div><div><div className="eyebrow">Judge Mode</div><h3>Replay leaderboard</h3></div><span className="status status-warning">{replay.judgeMode.reconciling ? "Provisional" : "Final"}</span></div>{replay.judgeMode.entries.map((entry) => <div className="judge-row" key={entry.entryId}><span>#{entry.rank}</span><strong>{entry.entryId}</strong><b>{entry.points} pts</b></div>)}</div>
     <div className="player-groups">{positions.map((position) => <div className="player-group" key={position}><h3>{position}</h3>{replay.players.filter((player) => player.position === position).map((player) => <div className={`player-row ${selected.has(player.fixturePlayerId) ? "is-selected" : ""}`} key={player.fixturePlayerId}><button className="player-select" aria-pressed={selected.has(player.fixturePlayerId)} disabled={!player.eligible || (!selected.has(player.fixturePlayerId) && draft.playerIds.length >= 11)} onClick={() => togglePlayer(player.fixturePlayerId)}><span>{player.preferredName}</span><small>{player.starter ? "Starter" : "Available"}</small></button><div className="captain-actions"><button aria-label={`Make ${player.preferredName} captain`} className={draft.captainId === player.fixturePlayerId ? "captain-active" : ""} disabled={!selected.has(player.fixturePlayerId)} onClick={() => setDraft((current) => ({ ...current, captainId: player.fixturePlayerId, viceCaptainId: current.viceCaptainId === player.fixturePlayerId ? "" : current.viceCaptainId }))}>C</button><button aria-label={`Make ${player.preferredName} vice-captain`} className={draft.viceCaptainId === player.fixturePlayerId ? "captain-active" : ""} disabled={!selected.has(player.fixturePlayerId)} onClick={() => setDraft((current) => ({ ...current, viceCaptainId: player.fixturePlayerId, captainId: current.captainId === player.fixturePlayerId ? "" : current.captainId }))}>VC</button></div></div>)}</div>)}</div>
     <div className="builder-footer"><span>{selectedPlayers.length ? `Captain: ${selectedPlayers.find((player) => player.fixturePlayerId === draft.captainId)?.preferredName ?? "choose one"} · Vice: ${selectedPlayers.find((player) => player.fixturePlayerId === draft.viceCaptainId)?.preferredName ?? "choose one"}` : "Select your XI"}</span><button className="primary-button" disabled={busy} onClick={validate}>Check XI <span aria-hidden="true">→</span></button></div>
-    {teamValid && <div className="entry-panel" aria-live="polite">
+    {teamValid && !isLiveContestFixture && <div className="entry-panel" aria-live="polite"><p className="builder-message">Practice replay — this fixture isn&apos;t the active devnet contest, so entry is unavailable here.</p></div>}
+    {teamValid && isLiveContestFixture && <div className="entry-panel" aria-live="polite">
       <div className="eyebrow">Lock team &amp; enter</div>
       {!wallet && <p className="builder-message">Connect your wallet above to lock this team and enter the devnet contest.</p>}
       {wallet && <>

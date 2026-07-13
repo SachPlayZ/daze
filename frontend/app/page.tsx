@@ -12,7 +12,7 @@ import { WalletConnect } from "./components/WalletConnect";
 
 export default function Home() {
   return <main>
-    <nav className="nav" aria-label="Main navigation"><DazeWordmark /><div className="nav-actions"><Link href="/season">Season</Link><OnboardingSheet /><ThemeToggle /><WalletConnect /></div></nav>
+    <nav className="nav" aria-label="Main navigation"><DazeWordmark /><div className="nav-actions"><Link href="/fixtures">Fixtures</Link><Link href="/season">Season</Link><OnboardingSheet /><ThemeToggle /><WalletConnect /></div></nav>
     <section className="hero" aria-labelledby="hero-title"><div className="hero-copy"><p className="eyebrow">World Cup fantasy, live by TxLINE</p><h1 id="hero-title">Every moment<br /><em>changes your game.</em></h1><p className="hero-text">Build your XI around a real fixture. Every verified action changes your points, rank, and story.</p><a className="primary-button" href="#contest">See today’s fixture <span aria-hidden="true">↓</span></a></div><div className="hero-score" aria-label="Verified feed status"><span className="live-dot">● Feed status</span><div className="score-amount">—</div><div className="score-detail"><strong>Awaiting a verified fixture</strong><span>Points and rank appear only after durable provider events.</span></div><div className="rank-shift">No live score is fabricated</div></div></section>
     <ProofBand />
     <div className="content-grid-intro"><div className="eyebrow">No account, no risk</div><p>Play a match that already happened. Replay Builder runs your XI against a real historical fixture&apos;s verified events — same scoring engine, zero commitment.</p></div>

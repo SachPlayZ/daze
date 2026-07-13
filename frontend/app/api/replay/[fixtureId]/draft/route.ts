@@ -4,23 +4,22 @@ import { NextResponse } from "next/server";
 import { projectHistoricalReplayDraft, quickPickHistoricalReplay, validateHistoricalReplayDraft } from "../../../../../../apps/api/src/historical-replay";
 
 export const dynamic = "force-dynamic";
-const fixtureId = "18175981";
 const formations = new Set(["4-4-2", "4-3-3", "4-5-1", "3-5-2", "3-4-3", "5-3-2"]);
 type Formation = "4-4-2" | "4-3-3" | "4-5-1" | "3-5-2" | "3-4-3" | "5-3-2";
 
-async function capturedHistory() {
-  const source = path.resolve(process.cwd(), "..", "tests/provider-fixtures/txline-devnet/scores-historical-18175981.json");
+async function capturedHistory(fixtureId: string) {
+  const source = path.resolve(process.cwd(), "..", `tests/provider-fixtures/txline-devnet/scores-historical-${fixtureId}.json`);
   const parsed = JSON.parse(await readFile(source, "utf8")) as { payload?: unknown };
   if (!Array.isArray(parsed.payload)) throw new Error("Historical fixture payload is invalid.");
   return parsed.payload;
 }
 
 export async function POST(request: Request, context: { params: Promise<{ fixtureId: string }> }) {
-  const params = await context.params;
-  if (params.fixtureId !== fixtureId) return NextResponse.json({ message: "Historical fixture is unavailable." }, { status: 404 });
+  const { fixtureId } = await context.params;
+  if (!/^\d+$/.test(fixtureId)) return NextResponse.json({ message: "Historical fixture is unavailable." }, { status: 404 });
   try {
     const body = await request.json() as { action?: unknown; formation?: unknown; seed?: unknown; team?: unknown };
-    const history = await capturedHistory();
+    const history = await capturedHistory(fixtureId);
     if (body.action === "QUICK_PICK") {
       if (typeof body.formation !== "string" || !formations.has(body.formation) || typeof body.seed !== "number" || !Number.isInteger(body.seed)) return NextResponse.json({ message: "Quick Pick request is invalid." }, { status: 400 });
       return NextResponse.json({ team: quickPickHistoricalReplay(history, body.formation as Formation, body.seed) }, { headers: { "Cache-Control": "no-store" } });
