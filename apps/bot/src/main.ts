@@ -112,49 +112,78 @@ async function handleToday(chatId: number): Promise<void> {
   await reply(chatId, "Upcoming fixtures:\n\n" + lines.join("\n\n"));
 }
 
-async function handleTeam(chatId: number, telegramUserId: string): Promise<void> {
+function contestPickerText(command: string, rows: { contest_id: string; fixture_id: string; kickoff_at: Date }[]): string {
+  const list = rows.map((r) => `• ${r.contest_id} — fixture ${r.fixture_id} (${new Date(r.kickoff_at).toUTCString().replace(/ GMT$/, " UTC")})`).join("\n");
+  return `You're in multiple contests. Reply with ${command} <contestId>:\n\n${list}`;
+}
+
+async function handleTeam(chatId: number, telegramUserId: string, args: string): Promise<void> {
   const wallet = await linkedWallet(telegramUserId);
   if (!wallet) {
     await reply(chatId, "Your Telegram account is not linked yet. Use /link to connect your wallet first.");
     return;
   }
-  const res = await db().query<{ contest_id: string; canonical_json: { formation: string; playerIds: string[]; captainId: string; viceCaptainId: string }; locked_at: Date }>(
-    "select contest_id, canonical_json, locked_at from locked_teams where wallet = $1 order by locked_at desc limit 1",
+  const res = await db().query<{ contest_id: string; fixture_id: string; kickoff_at: Date; canonical_json: { formation: string; playerIds: string[]; captainId: string; viceCaptainId: string }; locked_at: Date }>(
+    `select lt.contest_id, c.fixture_id, f.kickoff_at, lt.canonical_json, lt.locked_at
+     from locked_teams lt join contests c on c.id = lt.contest_id join fixtures f on f.id = c.fixture_id
+     where lt.wallet = $1 order by f.kickoff_at desc`,
     [wallet],
   );
-  if (!res.rows[0]) {
+  if (!res.rows.length) {
     await reply(chatId, `You haven't locked a team yet.\nVisit ${APP_URL} to build your XI.`);
     return;
   }
-  const { contest_id: contestId, canonical_json: team, locked_at } = res.rows[0];
-  const lockedTs = new Date(locked_at).toUTCString().replace(/ GMT$/, " UTC");
+  const requested = args.trim();
+  if (requested) {
+    const match = res.rows.find((r) => r.contest_id === requested);
+    if (!match) { await reply(chatId, `No locked team found for contest ${requested}.\nUse /team to see your contests.`); return; }
+    return void (await sendTeam(chatId, match));
+  }
+  if (res.rows.length > 1) { await reply(chatId, contestPickerText("/team", res.rows)); return; }
+  await sendTeam(chatId, res.rows[0]!);
+}
+
+async function sendTeam(chatId: number, row: { contest_id: string; canonical_json: { formation: string; playerIds: string[]; captainId: string; viceCaptainId: string }; locked_at: Date }): Promise<void> {
+  const lockedTs = new Date(row.locked_at).toUTCString().replace(/ GMT$/, " UTC");
   await reply(chatId,
-    `Your locked squad for contest ${contestId}:\n\n` +
-    `Formation: ${team.formation}\n` +
-    `Players (note: player IDs shown — names available on the web app):\n${team.playerIds.map((id) => `  • ${id}`).join("\n")}\n\n` +
-    `Captain: player ${team.captainId}\n` +
-    `Vice-captain: player ${team.viceCaptainId}\n\n` +
+    `Your locked squad for contest ${row.contest_id}:\n\n` +
+    `Formation: ${row.canonical_json.formation}\n` +
+    `Players (note: player IDs shown — names available on the web app):\n${row.canonical_json.playerIds.map((id) => `  • ${id}`).join("\n")}\n\n` +
+    `Captain: player ${row.canonical_json.captainId}\n` +
+    `Vice-captain: player ${row.canonical_json.viceCaptainId}\n\n` +
     `Locked at: ${lockedTs}`,
   );
 }
 
-async function handlePoints(chatId: number, telegramUserId: string): Promise<void> {
+async function handlePoints(chatId: number, telegramUserId: string, args: string): Promise<void> {
   const wallet = await linkedWallet(telegramUserId);
   if (!wallet) {
     await reply(chatId, "Your Telegram account is not linked yet. Use /link to connect your wallet first.");
     return;
   }
-  const res = await db().query<{ contest_id: string; total: number; rank: number | null }>(
-    "select contest_id, total, rank from entry_totals where wallet = $1 order by updated_at desc limit 1",
+  const res = await db().query<{ contest_id: string; fixture_id: string; kickoff_at: Date; total: number; rank: number | null }>(
+    `select et.contest_id, c.fixture_id, f.kickoff_at, et.total, et.rank
+     from entry_totals et join contests c on c.id = et.contest_id join fixtures f on f.id = c.fixture_id
+     where et.wallet = $1 order by f.kickoff_at desc`,
     [wallet],
   );
-  if (!res.rows[0]) {
+  if (!res.rows.length) {
     await reply(chatId, `You haven't entered a contest yet.\nVisit ${APP_URL} to lock your team and enter.`);
     return;
   }
-  const { contest_id: contestId, total, rank } = res.rows[0];
-  const rankText = rank !== null ? `Rank: #${rank}` : "Rank: not yet assigned";
-  await reply(chatId, `Your score for contest ${contestId}:\nTotal points: ${total}\n${rankText}\n\nFull leaderboard: ${APP_URL}`);
+  const requested = args.trim();
+  if (requested) {
+    const match = res.rows.find((r) => r.contest_id === requested);
+    if (!match) { await reply(chatId, `You haven't entered contest ${requested}.\nUse /points to see your contests.`); return; }
+    return void (await sendPoints(chatId, match));
+  }
+  if (res.rows.length > 1) { await reply(chatId, contestPickerText("/points", res.rows)); return; }
+  await sendPoints(chatId, res.rows[0]!);
+}
+
+async function sendPoints(chatId: number, row: { contest_id: string; total: number; rank: number | null }): Promise<void> {
+  const rankText = row.rank !== null ? `Rank: #${row.rank}` : "Rank: not yet assigned";
+  await reply(chatId, `Your score for contest ${row.contest_id}:\nTotal points: ${row.total}\n${rankText}\n\nFull leaderboard: ${APP_URL}`);
 }
 
 async function handleSettings(chatId: number, telegramUserId: string, args: string): Promise<void> {
@@ -268,8 +297,8 @@ async function handleUpdate(update: TgUpdate): Promise<void> {
       case "/start": await handleStart(chatId); break;
       case "/link": await handleLink(chatId, telegramUserId); break;
       case "/today": await handleToday(chatId); break;
-      case "/team": await handleTeam(chatId, telegramUserId); break;
-      case "/points": await handlePoints(chatId, telegramUserId); break;
+      case "/team": await handleTeam(chatId, telegramUserId, args); break;
+      case "/points": await handlePoints(chatId, telegramUserId, args); break;
       case "/settings": await handleSettings(chatId, telegramUserId, args); break;
       case "/unlink": await handleUnlink(chatId, telegramUserId); break;
       case "/stop": await handleStop(chatId, telegramUserId); break;

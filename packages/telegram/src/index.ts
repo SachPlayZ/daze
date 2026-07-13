@@ -15,6 +15,18 @@ export function correctionMessage(input: { previousImpact: number; correctedImpa
   return `Score correction: the earlier event was amended by the official feed.\nPrevious impact: ${signed(input.previousImpact)}\nCorrected impact: ${signed(input.correctedImpact)}\nNew total: ${input.newTotal}\n${input.contestUrl}`;
 }
 
+export function rankChangeMessage(input: { previousRank: number; nextRank: number; contestUrl: string }): string {
+  if (!input.contestUrl.startsWith("http")) throw new Error("Contest URL is required.");
+  const direction = input.nextRank < input.previousRank ? "up" : "down";
+  return `Rank update: you moved ${direction}, #${input.previousRank} → #${input.nextRank}.\n${input.contestUrl}`;
+}
+
+export function finalResultMessage(input: { rank: number; total: number; payout: number; contestUrl: string }): string {
+  if (!input.contestUrl.startsWith("http")) throw new Error("Contest URL is required.");
+  const payoutLine = input.payout > 0 ? `Payout: ${input.payout} tokens\n` : "";
+  return `Final result: rank #${input.rank}, ${input.total} points.\n${payoutLine}${input.contestUrl}`;
+}
+
 export type TelegramHttp = (input: string, init: RequestInit) => Promise<Response>;
 /** Server-only Telegram client; accepts only positive direct-message user IDs. */
 export class TelegramClient {

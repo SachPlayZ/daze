@@ -8,6 +8,7 @@ import { getAccount, getAssociatedTokenAddressSync, TOKEN_2022_PROGRAM_ID, ASSOC
 import { db } from "./db";
 import { buildSettlementPayouts, decodeSolanaAddress, type SettlementLeaf } from "../../../packages/solana-client/src/settlement";
 import { buildHistoricalReplayReadModel } from "../../api/src/historical-replay";
+import { finalResultMessage } from "../../../packages/telegram/src/index";
 
 const log = (...args: unknown[]) => console.log(new Date().toISOString(), ...args);
 
@@ -179,6 +180,7 @@ export async function checkAndSettleContests(): Promise<void> {
       const mintPubkey = new PublicKey(contest.mint);
       const vault = getAssociatedTokenAddressSync(mintPubkey, contestPubkey, true, TOKEN_2022_PROGRAM_ID, ASSOCIATED_TOKEN_PROGRAM_ID);
       const vaultAccount = await getAccount(connection, vault, "confirmed", TOKEN_2022_PROGRAM_ID);
+      const payoutByWallet = new Map(ranked.rows.map((row, index) => [row.wallet, BigInt(Math.floor(Number(vaultAccount.amount) * curve[index]))] as const));
       const leaves: SettlementLeaf[] = ranked.rows.map((row, index) => ({ entryPublicKey: decodeSolanaAddress(row.wallet), amount: BigInt(Math.floor(Number(vaultAccount.amount) * curve[index])) })).filter((leaf) => leaf.amount > BigInt(0));
       if (!leaves.length) { log(`contest-auto-settler: contest ${contest.id} vault has nothing to distribute; skipping.`); continue; }
       const { root, payouts } = buildSettlementPayouts(leaves);
@@ -199,9 +201,40 @@ export async function checkAndSettleContests(): Promise<void> {
         [contest.id, rootHex, signature],
       );
       log(`contest-auto-settler: settled contest ${contest.id} (tx ${signature}), ${payouts.length} payouts, total ${payoutTotal}.`);
+      try {
+        await notifyFinalResults(pool, contest.id, payoutByWallet);
+      } catch (error) {
+        log(`contest-auto-settler: final-result notifications failed for contest ${contest.id} (settlement itself succeeded):`, error instanceof Error ? error.message : error);
+      }
     } catch (error) {
       log(`contest-auto-settler: failed for contest ${contest.id}:`, error instanceof Error ? error.message : error);
     }
+  }
+}
+
+/** Best-effort, once per settled contest (status flips to SETTLED before this runs, so it can never re-fire for the same contest). */
+async function notifyFinalResults(pool: Pool, contestId: string, payoutByWallet: Map<string, bigint>): Promise<void> {
+  const entrants = await pool.query<{ wallet: string; total: number; rank: number | null }>(
+    "select wallet, total, rank from entry_totals where contest_id = $1",
+    [contestId],
+  );
+  const contestUrl = `${process.env.NEXT_PUBLIC_APP_URL ?? "https://daze.app"}/matches/${contestId}/live`;
+  for (const entrant of entrants.rows) {
+    if (entrant.rank === null) continue;
+    const link = await pool.query<{ telegram_user_id: string }>(
+      `select tl.telegram_user_id from telegram_links tl
+       left join notification_preferences np on np.wallet = tl.wallet
+       where tl.wallet = $1 and coalesce(np.paused, false) = false and coalesce(np.final_results, true) = true`,
+      [entrant.wallet],
+    );
+    const payout = payoutByWallet.get(entrant.wallet) ?? BigInt(0);
+    const text = finalResultMessage({ rank: entrant.rank, total: entrant.total, payout: Number(payout), contestUrl });
+    const idempotencyKey = `${entrant.wallet}:${contestId}:FINAL`;
+    await pool.query(
+      `insert into notification_outbox (idempotency_key, payload, committed_at, wallet, telegram_user_id) values ($1, $2, now(), $3, $4)
+       on conflict (idempotency_key) do nothing`,
+      [idempotencyKey, JSON.stringify({ text, kind: "FINAL", entryId: `${contestId}:${entrant.wallet}` }), entrant.wallet, link.rows[0]?.telegram_user_id ?? null],
+    );
   }
 }
 

@@ -8,7 +8,7 @@ import { ingestProviderMessage } from "./ingestion";
 import { postgresIngestionStore } from "./store";
 import { initialFixtureScoreState, fullReplay, projectEvent, activeSeconds, type FixtureScoreState, type LockedTeam } from "../../../packages/scoring/src/projector";
 import { entryTotal, ledgerRowIdentity, type LedgerRow } from "../../../packages/scoring/src/index";
-import { pointImpactMessage } from "../../../packages/telegram/src/index";
+import { pointImpactMessage, correctionMessage, rankChangeMessage } from "../../../packages/telegram/src/index";
 import { scoringCapabilities } from "./capabilities";
 import { loadFixtureLineup } from "./lineup";
 import { incrementCounter } from "../../../packages/observability/src/index";
@@ -66,6 +66,7 @@ async function persistNewRows(pool: Pool, contestId: string, previousRows: Ledge
     );
   }
   const affectedEntries = [...new Set(added.map((row) => row.entryId))];
+  const previousRanks = await currentRanks(pool, contestId, affectedEntries);
   for (const entryId of affectedEntries) {
     const wallet = entryId.slice(contestId.length + 1);
     const rows = await pool.query<{ applied_points: number }>("select applied_points from fantasy_ledger where entry_id = $1", [entryId]);
@@ -77,7 +78,17 @@ async function persistNewRows(pool: Pool, contestId: string, previousRows: Ledge
     );
   }
   await recomputeRanks(pool, contestId);
-  await enqueueNotifications(pool, contestId, added, players);
+  await enqueueNotifications(pool, contestId, added, players, previousRanks);
+  await enqueueRankChangeNotifications(pool, contestId, affectedEntries, previousRanks);
+}
+
+async function currentRanks(pool: Pool, contestId: string, entryIds: string[]): Promise<Map<string, number | null>> {
+  if (!entryIds.length) return new Map();
+  const rows = await pool.query<{ entry_id: string; rank: number | null }>(
+    "select entry_id, rank from entry_totals where contest_id = $1 and entry_id = any($2)",
+    [contestId, entryIds],
+  );
+  return new Map(rows.rows.map((row) => [row.entry_id, row.rank]));
 }
 
 async function recomputeRanks(pool: Pool, contestId: string): Promise<void> {
@@ -87,36 +98,103 @@ async function recomputeRanks(pool: Pool, contestId: string): Promise<void> {
   }
 }
 
-async function enqueueNotifications(pool: Pool, contestId: string, rows: LedgerRow[], players: FixturePlayer[]): Promise<void> {
+function contestUrlFor(contestId: string): string {
+  return `${process.env.NEXT_PUBLIC_APP_URL ?? "https://daze.app"}/matches/${contestId}/live`;
+}
+
+async function linkedTelegramId(pool: Pool, wallet: string, preferenceColumn: "point_impacts" | "reconciliation" | "rank_changes" | "final_results"): Promise<string | null> {
+  const link = await pool.query<{ telegram_user_id: string }>(
+    `select tl.telegram_user_id from telegram_links tl
+     left join notification_preferences np on np.wallet = tl.wallet
+     where tl.wallet = $1 and coalesce(np.paused, false) = false and coalesce(np.${preferenceColumn}, true) = true`,
+    [wallet],
+  );
+  return link.rows[0]?.telegram_user_id ?? null;
+}
+
+/** Groups an event's ledger rows by (entryId, eventKey): a group containing a reversal is an amendment/correction,
+ * everything else is a plain point impact. reverse() (packages/scoring) only ever changes sourceRevision/appliedPoints/
+ * reversalOf on a copy of the original row, so both halves of a correction always share entryId + sourceEventKey. */
+async function enqueueNotifications(pool: Pool, contestId: string, rows: LedgerRow[], players: FixturePlayer[], previousRanks: Map<string, number | null>): Promise<void> {
+  const groups = new Map<string, LedgerRow[]>();
   for (const row of rows) {
-    const wallet = row.entryId.slice(contestId.length + 1);
-    const totalResult = await pool.query<{ total: number; rank: number | null }>("select total, rank from entry_totals where entry_id = $1", [row.entryId]);
+    const key = `${row.entryId}:${row.sourceEventKey}`;
+    const group = groups.get(key);
+    if (group) group.push(row); else groups.set(key, [row]);
+  }
+
+  for (const group of groups.values()) {
+    const entryId = group[0]!.entryId;
+    const wallet = entryId.slice(contestId.length + 1);
+    const totalResult = await pool.query<{ total: number; rank: number | null }>("select total, rank from entry_totals where entry_id = $1", [entryId]);
     const totals = totalResult.rows[0];
     if (!totals) continue;
-    const link = await pool.query<{ telegram_user_id: string }>(
-      `select tl.telegram_user_id from telegram_links tl
-       left join notification_preferences np on np.wallet = tl.wallet
-       where tl.wallet = $1 and coalesce(np.paused, false) = false and coalesce(np.point_impacts, true) = true`,
-      [wallet],
-    );
-    const idempotencyKey = `${wallet}:${row.sourceEventKey}:${row.action}:${row.sourceRevision}`;
-    const playerName = players.find((player) => player.fixturePlayerId === row.playerId)?.preferredName ?? row.playerId;
-    const text = pointImpactMessage({
-      minute: null,
-      action: row.action,
-      playerName,
-      basePoints: row.basePoints,
-      appliedPoints: row.appliedPoints,
-      previousTotal: totals.total - row.appliedPoints,
-      nextTotal: totals.total,
-      previousRank: null,
-      nextRank: totals.rank,
-      contestUrl: `${process.env.NEXT_PUBLIC_APP_URL ?? "https://daze.app"}/matches/${contestId}/live`,
-    });
+    const contestUrl = contestUrlFor(contestId);
+    const reversals = group.filter((row) => row.reversalOf);
+    const fresh = group.filter((row) => !row.reversalOf);
+    const netApplied = group.reduce((sum, row) => sum + row.appliedPoints, 0);
+
+    if (reversals.length) {
+      const telegramUserId = await linkedTelegramId(pool, wallet, "reconciliation");
+      const previousImpact = reversals.reduce((sum, row) => sum - row.appliedPoints, 0);
+      const correctedImpact = fresh.reduce((sum, row) => sum + row.appliedPoints, 0);
+      const text = correctionMessage({ previousImpact, correctedImpact, newTotal: totals.total, contestUrl });
+      const revisionLabel = [...group].map((row) => row.sourceRevision).sort().join("|");
+      const idempotencyKey = `${wallet}:${group[0]!.sourceEventKey}:CORRECTION:${revisionLabel}`;
+      await pool.query(
+        `insert into notification_outbox (idempotency_key, payload, committed_at, wallet, telegram_user_id) values ($1, $2, now(), $3, $4)
+         on conflict (idempotency_key) do nothing`,
+        [idempotencyKey, JSON.stringify({ text, kind: "CORRECTION", entryId }), wallet, telegramUserId],
+      );
+      continue;
+    }
+
+    const telegramUserId = await linkedTelegramId(pool, wallet, "point_impacts");
+    const previousRank = previousRanks.get(entryId) ?? null;
+    for (const row of fresh) {
+      const idempotencyKey = `${wallet}:${row.sourceEventKey}:${row.action}:${row.sourceRevision}`;
+      const playerName = players.find((player) => player.fixturePlayerId === row.playerId)?.preferredName ?? row.playerId;
+      const text = pointImpactMessage({
+        minute: null,
+        action: row.action,
+        playerName,
+        basePoints: row.basePoints,
+        appliedPoints: row.appliedPoints,
+        previousTotal: totals.total - netApplied,
+        nextTotal: totals.total,
+        previousRank,
+        nextRank: totals.rank,
+        contestUrl,
+      });
+      await pool.query(
+        `insert into notification_outbox (idempotency_key, payload, committed_at, wallet, telegram_user_id) values ($1, $2, now(), $3, $4)
+         on conflict (idempotency_key) do nothing`,
+        [idempotencyKey, JSON.stringify({ text, ruleCode: row.action, entryId }), wallet, telegramUserId],
+      );
+    }
+  }
+}
+
+/** Fires once per rank-changing entry per batch, independent of the point_impacts preference. Gated on rank_changes. */
+async function enqueueRankChangeNotifications(pool: Pool, contestId: string, affectedEntries: string[], previousRanks: Map<string, number | null>): Promise<void> {
+  if (!affectedEntries.length) return;
+  const totals = await pool.query<{ entry_id: string; wallet: string; total: number; rank: number | null }>(
+    "select entry_id, wallet, total, rank from entry_totals where contest_id = $1 and entry_id = any($2)",
+    [contestId, affectedEntries],
+  );
+  const contestUrl = contestUrlFor(contestId);
+  for (const row of totals.rows) {
+    const previousRank = previousRanks.get(row.entry_id) ?? null;
+    if (previousRank === null || row.rank === null || previousRank === row.rank) continue;
+    const telegramUserId = await linkedTelegramId(pool, row.wallet, "rank_changes");
+    const text = rankChangeMessage({ previousRank, nextRank: row.rank, contestUrl });
+    // Keyed on the rank transition plus current total (not just the rank pair) so a later, genuinely distinct
+    // transition through the same rank pair still gets its own notification.
+    const idempotencyKey = `${row.wallet}:${contestId}:RANK_CHANGE:${previousRank}:${row.rank}:${row.total}`;
     await pool.query(
       `insert into notification_outbox (idempotency_key, payload, committed_at, wallet, telegram_user_id) values ($1, $2, now(), $3, $4)
        on conflict (idempotency_key) do nothing`,
-      [idempotencyKey, JSON.stringify({ text, ruleCode: row.action, entryId: row.entryId }), wallet, link.rows[0]?.telegram_user_id ?? null],
+      [idempotencyKey, JSON.stringify({ text, kind: "RANK_CHANGE", entryId: row.entry_id }), row.wallet, telegramUserId],
     );
   }
 }
