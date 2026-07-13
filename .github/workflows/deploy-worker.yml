@@ -20,4 +20,4 @@ jobs:
           host: ${{ secrets.DEPLOY_HOST }}
           username: ${{ secrets.DEPLOY_USER }}
           key: ${{ secrets.DEPLOY_SSH_KEY }}
-          script: bash ~/daze/apps/worker/deploy.sh
+          script: cd ~/daze && git fetch origin main && git reset --hard origin/main && bash apps/worker/deploy.sh
