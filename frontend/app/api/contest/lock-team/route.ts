@@ -1,5 +1,3 @@
-import { readFile } from "node:fs/promises";
-import path from "node:path";
 import { NextResponse } from "next/server";
 import { readSession } from "../../../../../apps/api/src/auth";
 import { validateHistoricalReplayDraft } from "../../../../../apps/api/src/historical-replay";
@@ -10,7 +8,6 @@ import { db } from "../../../../lib/db";
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-const fixtureId = "18175981";
 const scoringVersion = "v1.0.0";
 const positionMappingVersion = "txline-soccer-world-cup-v1";
 const formations = new Set(["4-4-2", "4-3-3", "4-5-1", "3-5-2", "3-4-3", "5-3-2"]);
@@ -21,34 +18,37 @@ function walletFromRequest(request: Request, secret: string): string | null {
   return readSession(token, secret)?.wallet ?? null;
 }
 
-async function capturedHistory() {
-  const source = path.resolve(process.cwd(), "..", "tests/provider-fixtures/txline-devnet/scores-historical-18175981.json");
-  const parsed = JSON.parse(await readFile(source, "utf8")) as { payload?: unknown };
-  if (!Array.isArray(parsed.payload)) throw new Error("Historical fixture payload is invalid.");
-  return parsed.payload;
-}
-
 /** Server-authoritative team lock: repeats domain validation, computes the canonical hash, and persists an immutable row before any Solana entry transaction is built. */
 export async function POST(request: Request) {
   const secret = process.env.AUTH_SESSION_SECRET;
-  const contestId = process.env.NEXT_PUBLIC_FANTASY_CONTEST_ID;
-  const lockTs = process.env.NEXT_PUBLIC_FANTASY_LOCK_TS;
-  if (!secret || !contestId || !lockTs) return NextResponse.json({ message: "Contest entry is not configured yet." }, { status: 503 });
+  if (!secret) return NextResponse.json({ message: "Contest entry is not configured yet." }, { status: 503 });
   const wallet = walletFromRequest(request, secret);
   if (!wallet) return NextResponse.json({ message: "Connect your wallet first." }, { status: 401 });
-  if (Date.now() >= Number(lockTs) * 1000) return NextResponse.json({ message: "This contest has locked. No further entries are accepted." }, { status: 409 });
 
-  const body = await request.json().catch(() => null) as { playerIds?: unknown; captainId?: unknown; viceCaptainId?: unknown; formation?: unknown } | null;
-  if (!body || !Array.isArray(body.playerIds) || !body.playerIds.every((id) => typeof id === "string") || typeof body.captainId !== "string" || typeof body.viceCaptainId !== "string" || typeof body.formation !== "string" || !formations.has(body.formation)) {
+  const body = await request.json().catch(() => null) as { fixtureId?: unknown; playerIds?: unknown; captainId?: unknown; viceCaptainId?: unknown; formation?: unknown } | null;
+  if (!body || typeof body.fixtureId !== "string" || !/^\d+$/.test(body.fixtureId) || !Array.isArray(body.playerIds) || !body.playerIds.every((id) => typeof id === "string") || typeof body.captainId !== "string" || typeof body.viceCaptainId !== "string" || typeof body.formation !== "string" || !formations.has(body.formation)) {
     return NextResponse.json({ message: "Team payload is invalid." }, { status: 400 });
   }
-  const draft: DraftTeam = { playerIds: body.playerIds, captainId: body.captainId, viceCaptainId: body.viceCaptainId, formation: body.formation as DraftTeam["formation"] };
-  const history = await capturedHistory();
-  const validation = validateHistoricalReplayDraft(history, draft);
-  if (!validation.valid) return NextResponse.json({ message: validation.errors.join(" ") }, { status: 422 });
+  const fixtureId = body.fixtureId;
 
   const pool = db();
   if (!pool) return NextResponse.json({ message: "Contest storage is not configured." }, { status: 503 });
+
+  const contestRow = await pool.query<{ id: string; lock_ts: string }>(
+    "select id, lock_ts from contests where fixture_id = $1 and status in ('CREATED', 'LOCKED') limit 1",
+    [fixtureId],
+  );
+  const contest = contestRow.rows[0];
+  if (!contest) return NextResponse.json({ message: "This fixture has no active contest yet." }, { status: 503 });
+  const contestId = contest.id;
+  if (Date.now() >= Number(contest.lock_ts) * 1000) return NextResponse.json({ message: "This contest has locked. No further entries are accepted." }, { status: 409 });
+
+  const draft: DraftTeam = { playerIds: body.playerIds, captainId: body.captainId, viceCaptainId: body.viceCaptainId, formation: body.formation as DraftTeam["formation"] };
+  const rawEvents = await pool.query<{ raw_json: unknown }>("select raw_json from raw_provider_events where fixture_id = $1 order by id asc", [fixtureId]);
+  if (!rawEvents.rows.length) return NextResponse.json({ message: "This fixture's lineup is not yet available." }, { status: 503 });
+  const history = rawEvents.rows.map((row) => row.raw_json);
+  const validation = validateHistoricalReplayDraft(history, draft);
+  if (!validation.valid) return NextResponse.json({ message: validation.errors.join(" ") }, { status: 422 });
 
   const existing = await pool.query<{ canonical_json: { formation: string; playerIds: string[]; captainId: string; viceCaptainId: string }; canonical_team_hash: string }>(
     "select canonical_json, canonical_team_hash from locked_teams where contest_id = $1 and wallet = $2",

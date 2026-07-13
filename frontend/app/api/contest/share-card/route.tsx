@@ -7,14 +7,12 @@ export const dynamic = "force-dynamic";
 export async function GET(request: Request) {
   const url = new URL(request.url);
   const wallet = url.searchParams.get("wallet");
+  const fixtureId = url.searchParams.get("fixtureId");
   if (!wallet) {
     return new Response("wallet query param required", { status: 400 });
   }
-
-  const contestId = process.env.NEXT_PUBLIC_FANTASY_CONTEST_ID;
-  const fixtureId = process.env.NEXT_PUBLIC_FANTASY_FIXTURE_ID;
-  if (!contestId || !fixtureId) {
-    return new Response("Contest not configured", { status: 503 });
+  if (!fixtureId || !/^\d+$/.test(fixtureId)) {
+    return new Response("fixtureId query param required", { status: 400 });
   }
 
   const pool = db();
@@ -23,6 +21,12 @@ export async function GET(request: Request) {
   }
 
   try {
+    const contestRow = await pool.query<{ id: string }>(
+      "select id from contests where fixture_id = $1 and status in ('CREATED', 'LOCKED', 'SETTLED') limit 1",
+      [fixtureId],
+    );
+    const contestId = contestRow.rows[0]?.id;
+    if (!contestId) return new Response("Contest not configured", { status: 503 });
     const entryId = `${contestId}:${wallet}`;
 
     // Entry totals

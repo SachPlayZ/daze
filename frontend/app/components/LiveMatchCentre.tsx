@@ -37,7 +37,7 @@ type LiveData = {
   entrantCount: number;
 };
 
-export function LiveMatchCentre() {
+export function LiveMatchCentre({ fixtureId = process.env.NEXT_PUBLIC_FANTASY_FIXTURE_ID ?? "18175981" }: { fixtureId?: string }) {
   const [data, setData] = useState<LiveData | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [wallet, setWallet] = useState<string | null>(null);
@@ -59,7 +59,7 @@ export function LiveMatchCentre() {
     let active = true;
     const poll = async () => {
       try {
-        const res = await fetch("/api/contest/live", { cache: "no-store" });
+        const res = await fetch(`/api/contest/live?fixtureId=${fixtureId}`, { cache: "no-store" });
         if (!res.ok) {
           const json = await res.json().catch(() => ({})) as { error?: string };
           if (active) setError(json.error ?? "Live data unavailable.");
@@ -74,7 +74,7 @@ export function LiveMatchCentre() {
     void poll();
     const id = setInterval(() => { void poll(); }, 4000);
     return () => { active = false; clearInterval(id); };
-  }, []);
+  }, [fixtureId]);
 
   if (!data && !error) {
     return (
@@ -249,7 +249,7 @@ export function LiveMatchCentre() {
           <span style={{ fontSize: 13, color: "var(--muted)" }}>Share your result</span>
           <a
             className="secondary-button"
-            href={`/api/contest/share-card?wallet=${encodeURIComponent(wallet)}`}
+            href={`/api/contest/share-card?wallet=${encodeURIComponent(wallet)}&fixtureId=${fixtureId}`}
             target="_blank"
             rel="noopener noreferrer"
             style={{

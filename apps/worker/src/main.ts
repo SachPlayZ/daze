@@ -4,6 +4,7 @@ import { txlineFromEnvironment } from "../../../packages/txline-client/src/index
 import { TelegramClient } from "../../../packages/telegram/src/index";
 import { bootstrapFixture, handleProviderMessage } from "./pipeline";
 import { incrementCounter, observeHistogram, setGauge, snapshotMetrics } from "../../../packages/observability/src/index";
+import { autoCreateContests, checkAndSettleContests, getActiveContests, getContestIdForFixture, refreshContestCache } from "./contest-lifecycle";
 
 const log = (...args: unknown[]) => console.log(new Date().toISOString(), ...args);
 
@@ -49,8 +50,10 @@ async function oddsPollingLoop(fixtureId: string): Promise<never> {
   }
 }
 
-/** score-sse-consumer + score-gap-recovery: reconnects with backoff and never scores a message that was not durably stored first. */
-async function consumeScoreStream(fixtureId: string, contestId: string): Promise<never> {
+/** score-sse-consumer + score-gap-recovery: reconnects with backoff and never scores a message that was not durably stored first.
+ * Shared across every active fixture; each message is routed to its own contest by FixtureId. Assumes TxLINE broadcasts all
+ * subscribed fixtures on one stream — unverified against live multi-fixture traffic, see docs/decisions/0013. */
+async function consumeScoreStream(): Promise<never> {
   const client = txlineFromEnvironment();
   let backoffMs = 1000;
   for (;;) {
@@ -75,6 +78,9 @@ async function consumeScoreStream(fixtureId: string, contestId: string): Promise
           if (!dataLines.length) continue;
           try {
             const payload = JSON.parse(dataLines.join(""));
+            const fixtureId = payload && typeof payload === "object" && !Array.isArray(payload) ? String((payload as Record<string, unknown>).FixtureId ?? "") : "";
+            const contestId = fixtureId ? getContestIdForFixture(fixtureId) : undefined;
+            if (!contestId) continue;
             setGauge("txline_last_event_age_seconds", 0);
             const startedAt = Date.now();
             await handleProviderMessage(db(), contestId, payload);
@@ -127,22 +133,38 @@ async function readinessLoop(fixtureId: string, contestId: string): Promise<void
   }
 }
 
+const startedFixtures = new Set<string>();
+
+/** Starts readinessLoop + oddsPollingLoop for any active contest not already running in this process. Safe to call repeatedly. */
+async function bootstrapActiveContests(): Promise<void> {
+  const active = await getActiveContests();
+  for (const { fixtureId, contestId } of active) {
+    if (startedFixtures.has(fixtureId)) continue;
+    startedFixtures.add(fixtureId);
+    void readinessLoop(fixtureId, contestId);
+    void oddsPollingLoop(fixtureId);
+    log(`bootstrapped fixture ${fixtureId} for contest ${contestId}.`);
+  }
+}
+
 async function main(): Promise<void> {
   await ensureSchema();
   log("Daze worker: schema ready.");
 
   await importFixtures();
-  setInterval(importFixtures, 5 * 60_000);
+  await autoCreateContests();
+  await refreshContestCache();
+  await bootstrapActiveContests();
+  setInterval(() => {
+    importFixtures()
+      .then(autoCreateContests)
+      .then(refreshContestCache)
+      .then(bootstrapActiveContests)
+      .catch((error) => log("fixture/contest sync loop failed:", error instanceof Error ? error.message : error));
+  }, 5 * 60_000);
 
-  const fixtureId = process.env.FANTASY_FIXTURE_ID;
-  const contestId = process.env.NEXT_PUBLIC_FANTASY_CONTEST_ID ?? process.env.FANTASY_CONTEST;
-  if (fixtureId && contestId) {
-    await readinessLoop(fixtureId, contestId);
-    void consumeScoreStream(fixtureId, contestId);
-    void oddsPollingLoop(fixtureId);
-  } else {
-    log("FANTASY_FIXTURE_ID / contest id not configured; running fixture-importer only.");
-  }
+  void consumeScoreStream();
+  setInterval(() => { checkAndSettleContests().catch((error) => log("contest-auto-settler loop failed:", error instanceof Error ? error.message : error)); }, 60_000);
 
   setInterval(() => { dispatchNotifications().catch((error) => log("telegram-notifier loop failed:", error instanceof Error ? error.message : error)); }, 5_000);
   setInterval(() => { log("metrics", JSON.stringify(snapshotMetrics())); }, 60_000);

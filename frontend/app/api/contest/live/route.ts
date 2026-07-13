@@ -19,10 +19,10 @@ function walletFromRequest(request: Request, secret: string): string | null {
 const trunc = (w: string) => `${w.slice(0, 4)}…${w.slice(-4)}`;
 
 export async function GET(request: Request) {
-  const contestId = process.env.NEXT_PUBLIC_FANTASY_CONTEST_ID;
-  const fixtureId = process.env.NEXT_PUBLIC_FANTASY_FIXTURE_ID;
-  if (!contestId || !fixtureId) {
-    return NextResponse.json({ error: "Contest not configured" }, { status: 503 });
+  const url = new URL(request.url);
+  const fixtureId = url.searchParams.get("fixtureId");
+  if (!fixtureId || !/^\d+$/.test(fixtureId)) {
+    return NextResponse.json({ error: "A fixtureId query param is required" }, { status: 400 });
   }
 
   const secret = process.env.AUTH_SESSION_SECRET;
@@ -34,6 +34,13 @@ export async function GET(request: Request) {
   }
 
   try {
+    const contestRow = await pool.query<{ id: string }>(
+      "select id from contests where fixture_id = $1 and status in ('CREATED', 'LOCKED', 'SETTLED') limit 1",
+      [fixtureId],
+    );
+    const contestId = contestRow.rows[0]?.id;
+    if (!contestId) return NextResponse.json({ error: "This fixture has no contest yet" }, { status: 503 });
+
     // Feed state from fixtures table
     const fixtureRow = await pool.query<{ feed_state: string; updated_at: string; players_json: unknown }>(
       "select feed_state, updated_at, players_json from fixtures where id = $1",

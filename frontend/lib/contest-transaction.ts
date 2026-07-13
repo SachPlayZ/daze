@@ -8,6 +8,9 @@ export type PreparedEnterContest = BuiltEnterContest & { transaction: Transactio
 export type CreateContestInput = { programId: string; mint: string; authority: string; fixtureId: string; stakeTier: bigint; stakeAmount: bigint; lockTs: bigint; rpcUrl: string };
 export type BuiltCreateContest = { instruction: TransactionInstruction; contest: PublicKey; vault: PublicKey; authority: PublicKey };
 export type PreparedCreateContest = BuiltCreateContest & { transaction: Transaction; lastValidBlockHeight: number };
+export type PublishSettlementInput = { programId: string; mint: string; authority: string; contest: string; root: Uint8Array; payoutTotal: bigint; rpcUrl: string };
+export type BuiltPublishSettlement = { instruction: TransactionInstruction; contest: PublicKey; vault: PublicKey; settlement: PublicKey; authority: PublicKey };
+export type PreparedPublishSettlement = BuiltPublishSettlement & { transaction: Transaction; lastValidBlockHeight: number };
 
 const u64le = (value: bigint) => { if (value < BigInt(0) || value > BigInt("18446744073709551615")) throw new Error("Stake tier is invalid."); const bytes = Buffer.alloc(8); bytes.writeBigUInt64LE(value); return bytes; };
 const i64le = (value: bigint) => { if (value < BigInt("-9223372036854775808") || value > BigInt("9223372036854775807")) throw new Error("Lock timestamp is invalid."); const bytes = Buffer.alloc(8); bytes.writeBigInt64LE(value); return bytes; };
@@ -54,6 +57,27 @@ export function buildCreateContestInstruction(input: CreateContestInput): BuiltC
 
 export async function prepareCreateContest(input: CreateContestInput): Promise<PreparedCreateContest> {
   const built = buildCreateContestInstruction(input);
+  const connection = new Connection(input.rpcUrl, "confirmed"); const latest = await connection.getLatestBlockhash("confirmed");
+  const transaction = new Transaction({ feePayer: built.authority, blockhash: latest.blockhash, lastValidBlockHeight: latest.lastValidBlockHeight }).add(built.instruction);
+  return { ...built, transaction, lastValidBlockHeight: latest.lastValidBlockHeight };
+}
+
+/** Builds, but never signs or sends, the exact Anchor publish_settlement instruction. */
+export function buildPublishSettlementInstruction(input: PublishSettlementInput): BuiltPublishSettlement {
+  if (input.root.length !== 32) throw new Error("Settlement root must be 32 bytes.");
+  if (input.payoutTotal <= BigInt(0)) throw new Error("Payout total must be positive.");
+  const programId = new PublicKey(input.programId); const mint = new PublicKey(input.mint); const authority = new PublicKey(input.authority); const contest = new PublicKey(input.contest);
+  const [settlement] = PublicKey.findProgramAddressSync([Buffer.from("settlement"), contest.toBuffer()], programId);
+  const vault = getAssociatedTokenAddressSync(mint, contest, true, TOKEN_2022_PROGRAM_ID, ASSOCIATED_TOKEN_PROGRAM_ID);
+  const instruction = new TransactionInstruction({ programId, keys: [
+    { pubkey: authority, isSigner: true, isWritable: true }, { pubkey: contest, isSigner: false, isWritable: true }, { pubkey: vault, isSigner: false, isWritable: true }, { pubkey: mint, isSigner: false, isWritable: false },
+    { pubkey: settlement, isSigner: false, isWritable: true }, { pubkey: TOKEN_2022_PROGRAM_ID, isSigner: false, isWritable: false }, { pubkey: ASSOCIATED_TOKEN_PROGRAM_ID, isSigner: false, isWritable: false }, { pubkey: SystemProgram.programId, isSigner: false, isWritable: false },
+  ], data: Buffer.concat([discriminator("publish_settlement"), Buffer.from(input.root), u64le(input.payoutTotal)]) });
+  return { instruction, contest, vault, settlement, authority };
+}
+
+export async function preparePublishSettlement(input: PublishSettlementInput): Promise<PreparedPublishSettlement> {
+  const built = buildPublishSettlementInstruction(input);
   const connection = new Connection(input.rpcUrl, "confirmed"); const latest = await connection.getLatestBlockhash("confirmed");
   const transaction = new Transaction({ feePayer: built.authority, blockhash: latest.blockhash, lastValidBlockHeight: latest.lastValidBlockHeight }).add(built.instruction);
   return { ...built, transaction, lastValidBlockHeight: latest.lastValidBlockHeight };
