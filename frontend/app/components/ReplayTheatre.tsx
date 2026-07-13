@@ -15,7 +15,7 @@ export function ReplayTheatre({ fixtureId, team }: { fixtureId: string; team: Dr
   const loadedFixtureId = useRef<string | null>(null);
   const serializedTeam = useMemo(() => JSON.stringify(team), [team]);
   const stableTeam = useMemo(() => JSON.parse(serializedTeam) as Draft, [serializedTeam]);
-  const load = useCallback(async (cursor: number, command?: "START_TELEGRAM" | "ADVANCE" | "RESET") => {
+  const load = useCallback(async (cursor: number, command?: "START_TELEGRAM" | "ADVANCE" | "RESET" | "STOP_TELEGRAM") => {
     const response = await fetch(`/api/replay/${fixtureId}/theatre`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ cursor, team: stableTeam, command, sessionId: telegramSessionId.current }) });
     if (!response.ok) { const failure = await response.json().catch(() => null) as { message?: string } | null; throw new Error(failure?.message ?? "Replay Theatre is unavailable."); }
     const next = await response.json() as TheatreState;
@@ -36,10 +36,11 @@ export function ReplayTheatre({ fixtureId, team }: { fixtureId: string; team: Dr
   }, [load, running, speed, state]);
   const reset = () => { setRunning(false); void load(0, state?.telegramSessionId ? "RESET" : undefined).catch((reason: unknown) => setError(reason instanceof Error ? reason.message : "Replay Theatre reset failed.")); };
   const enableTelegram = () => { setRunning(false); setError(""); void load(0, "START_TELEGRAM").catch((reason: unknown) => setError(reason instanceof Error ? reason.message : "Telegram replay setup failed.")); };
+  const disableTelegram = () => { setError(""); void load(state?.cursor ?? 0, "STOP_TELEGRAM").catch((reason: unknown) => setError(reason instanceof Error ? reason.message : "Could not disable Telegram updates.")); };
   return <section className="replay-theatre" aria-label="Historical Replay Theatre">
     <div className="theatre-head"><div><div className="eyebrow">Replay Theatre</div><h3>Historical TxLINE replay</h3></div><span className={state?.final ? "status status-live" : "status status-warning"}>{state?.final ? "Final" : "Provisional"}</span></div>
     <p>Real captured actions, accelerated for the demo. This never represents a live match.</p>
-    <div className="theatre-controls"><button className="primary-button" onClick={() => setRunning((value) => !value)} disabled={!state || state.final}>{running ? "Pause" : state?.cursor ? "Resume" : "Start replay"}</button>{([1, 4, 10] as const).map((value) => <button key={value} className={speed === value ? "theatre-speed is-active" : "theatre-speed"} onClick={() => setSpeed(value)}>{value}x</button>)}<button className="secondary-button" onClick={reset}>Reset</button>{!state?.telegramEnabled && <button className="secondary-button" onClick={enableTelegram}>Send Telegram updates</button>}<span>{state ? `${state.cursor}/${state.totalEvents} events` : "Preparing sequence"}</span></div>
+    <div className="theatre-controls"><button className="primary-button" onClick={() => setRunning((value) => !value)} disabled={!state || state.final}>{running ? "Pause" : state?.cursor ? "Resume" : "Start replay"}</button>{([1, 4, 10] as const).map((value) => <button key={value} className={speed === value ? "theatre-speed is-active" : "theatre-speed"} onClick={() => setSpeed(value)}>{value}x</button>)}<button className="secondary-button" onClick={reset}>Reset</button>{state?.telegramEnabled ? <button className="secondary-button is-active" aria-pressed="true" onClick={disableTelegram}>Telegram updates on ✓</button> : <button className="secondary-button" aria-pressed="false" onClick={enableTelegram}>Send Telegram updates</button>}<span>{state ? `${state.cursor}/${state.totalEvents} events` : "Preparing sequence"}</span></div>
     {error && <p className="replay-warning">{error}</p>}
     {state?.event && <div className="theatre-event"><strong>{state.event.elapsedSec === null ? "Final" : `${Math.max(1, Math.ceil(state.event.elapsedSec / 60))}′`}</strong><span>{state.event.kind.replaceAll("_", " ")}</span></div>}
     {state?.impacts.length ? <div className="theatre-impact">{state.impacts.map((impact, index) => <p key={`${impact.playerName}-${index}`}><strong>{impact.playerName}</strong> · {impact.action} <b>{impact.appliedPoints > 0 ? "+" : ""}{impact.appliedPoints}</b></p>)}</div> : null}

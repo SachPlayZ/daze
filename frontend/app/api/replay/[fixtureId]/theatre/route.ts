@@ -55,7 +55,7 @@ export async function POST(request: Request, context: { params: Promise<{ fixtur
   if (!/^\d+$/.test(fixtureId)) return NextResponse.json({ message: "Historical fixture is unavailable." }, { status: 404 });
   try {
     const body = await request.json() as { cursor?: unknown; team?: unknown; command?: unknown; sessionId?: unknown };
-    const command = body.command === "START_TELEGRAM" || body.command === "ADVANCE" || body.command === "RESET" ? body.command : null;
+    const command = body.command === "START_TELEGRAM" || body.command === "ADVANCE" || body.command === "RESET" || body.command === "STOP_TELEGRAM" ? body.command : null;
     const raw = await history(fixtureId);
     const replay = buildHistoricalReplayReadModel(raw);
     const lineupRecord = [...raw].reverse().find((action) => action && typeof action === "object" && !Array.isArray(action) && (action as Record<string, unknown>).Action === "lineups" && (action as Record<string, unknown>).Confirmed === true);
@@ -81,6 +81,17 @@ export async function POST(request: Request, context: { params: Promise<{ fixtur
           [sessionId, fixtureId, wallet, JSON.stringify(userTeam)],
         );
         cursor = 0;
+      } else if (command === "STOP_TELEGRAM") {
+        if (typeof body.sessionId !== "string" || !body.sessionId) return NextResponse.json({ message: "Replay notification session is required." }, { status: 400 });
+        const session = await pool.query<{ team_json: Draft; cursor: number }>(
+          "select team_json, cursor from historical_replay_sessions where id = $1 and fixture_id = $2 and wallet = $3",
+          [body.sessionId, fixtureId, wallet],
+        );
+        if (!session.rows[0]) return NextResponse.json({ message: "Replay notification session is unavailable." }, { status: 404 });
+        await pool.query("update historical_replay_sessions set telegram_enabled = false, updated_at = now() where id = $1 and wallet = $2", [body.sessionId, wallet]);
+        userTeam = session.rows[0].team_json;
+        cursor = session.rows[0].cursor;
+        sessionId = null;
       } else {
         if (typeof body.sessionId !== "string" || !body.sessionId) return NextResponse.json({ message: "Replay notification session is required." }, { status: 400 });
         const session = await pool.query<{ team_json: Draft; cursor: number; telegram_enabled: boolean }>(

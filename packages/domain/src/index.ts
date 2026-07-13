@@ -17,7 +17,7 @@ export type DraftTeam = {
   formation: Formation;
 };
 
-const formationCounts: Record<Formation, Record<Position, number>> = {
+export const formationCounts: Record<Formation, Record<Position, number>> = {
   "4-4-2": { GK: 1, DEF: 4, MID: 4, FWD: 2 },
   "4-3-3": { GK: 1, DEF: 4, MID: 3, FWD: 3 },
   "4-5-1": { GK: 1, DEF: 4, MID: 5, FWD: 1 },
