@@ -1,0 +1,114 @@
+LANDING CLEANUP + TEAM FLAGS + FORMATION PITCH UI
+
+CONTEXT
+User asked 3 things after asking where Telegram integration lives (answered inline,
+no code change -- bot is apps/bot/src/main.ts, long-polling, /link flow via
+frontend/app/link/page.tsx + frontend/app/api/telegram/link/route.ts, no webhook/TWA SDK):
+
+1. Landing page (frontend/app/page.tsx) embeds the historical Replay Builder directly
+   (hardcoded fixture 18175981), duplicating what /fixtures and /replay/[fixtureId]
+   already do properly. Remove it from landing; keep it only on its dedicated pages.
+
+2. Team names (in fixtures list + replay builder) and each player's row have no country
+   flag, even though every "team" in this World Cup fantasy app IS a national team --
+   confirmed via tests/provider-fixtures/txline-devnet/scores-historical-18175981.json:
+   Lineups[].preferredName (team name, e.g. "France") equals player.country. So one
+   name -> flag lookup serves both team headers and player rows.
+   DECISION: use the "flag-icons" npm package (real SVG/CSS flags by ISO 3166-1
+   alpha-2 code), NOT emoji flags. Installed via pnpm (repo is a pnpm workspace --
+   npm install breaks it, use pnpm add). Still need a country-name -> ISO2 lookup
+   table since TxLINE only gives country names, not codes.
+
+3. The player picker (ReplayBuilder.tsx) currently renders 4 stacked groups
+   (GK/DEF/MID/FWD) with no visual formation. Replace with a two-pane layout: a CSS
+   football pitch on the left showing circular slots per the selected formation
+   (filled with team flag + last name once a player is picked), and the existing
+   grouped player list on the right used to make picks.
+
+1. REMOVE REPLAY BUILDER FROM LANDING PAGE
+File: frontend/app/page.tsx
+- Delete <ReplayBuilder /> and its import.
+- Change section#contest from .content-grid (2-col) to .content-grid-single (matches
+  pattern already used in frontend/app/replay/[fixtureId]/page.tsx), keeping only the
+  rules-card aside as a standalone "how it works" card.
+- Update hero CTA (href="#contest") -> href="/fixtures".
+- Update the .content-grid-intro blurb text (currently references "Replay Builder
+  runs your XI...") to point users at Fixtures instead.
+- No other pages change -- /fixtures (FixturesList) and /replay/[fixtureId]
+  (ReplayBuilder) already do this correctly.
+
+2. TEAM FLAGS (flag-icons, not emoji)
+Installed: flag-icons (pnpm add flag-icons) -- provides node_modules/flag-icons/css
+and per-country SVGs keyed by ISO2 code (e.g. fi fi-fr).
+New file: frontend/app/lib/flags.ts
+- export function countryCode(countryName: string): string | null -- static
+  Record<string,string> country display name -> ISO 3166-1 alpha-2. Broad coverage
+  (all FIFA-recognized countries), not just World Cup entrants. Returns null if
+  unmatched (no crash).
+- Small <Flag countryName /> helper component rendering
+  <span className={`fi fi-${code}`} /> when code resolves, nothing otherwise.
+- Import flag-icons CSS once globally (frontend/app/layout.tsx: "flag-icons/css/flag-icons.min.css").
+
+Usage sites:
+- frontend/app/components/ReplayBuilder.tsx
+  - Team header (~line 101): render each participants[].name with <Flag /> prefixed,
+    joined with literal "vs".
+  - Player rows: resolve participantId -> team name via replay.participants -> <Flag />.
+    Shown inside the pitch slot (see #3), and also as a small flag prefix next to
+    <span>{player.preferredName}</span> in the side list.
+- frontend/app/components/FixturesList.tsx
+  - Upcoming rows: <Flag countryName={fixture.homeTeamName} /> / away, guard for null.
+  - Replay rows: fixture.teams is a pre-joined "France vs Belgium" string -- split on
+    " vs ", flag-prefix each side, rejoin for display.
+
+3. FORMATION PITCH (replaces the 4-group-only view)
+New file: frontend/app/components/FormationPitch.tsx
+- Pure/derived, no internal state. Props: formation, playerIds, players, participants,
+  onSlotClick (reuses existing togglePlayer to deselect).
+- Local formationLayout mirrors packages/domain/src/index.ts formationCounts (GK
+  always 1; DEF/MID/FWD per formation) -- duplicated client-side deliberately,
+  consistent with existing pattern where ReplayBuilder.tsx already redefines
+  Position/Formation locally instead of importing the domain package.
+- Per position row (top->bottom: FWD, MID, DEF, GK), compute slots by filtering
+  playerIds (existing selection order, togglePlayer appends) down to that position,
+  slice to the row's count, pad remaining with null.
+- Filled slot = circle with team flag centered inside + last name
+  (preferredName.split(",")[0]) as a label above; click calls onSlotClick(id) to
+  deselect. Empty slot = dashed circle showing position code, not clickable
+  (selection stays driven from the list on the right).
+- Pure CSS pitch background (green gradient stripes + halfway line + center circle),
+  no image asset.
+
+Integration in ReplayBuilder.tsx:
+- Wrap .player-groups + new <FormationPitch /> in a new .builder-layout two-column
+  flex/grid (pitch ~320-380px fixed left column, list flexes right; stacks to one
+  column under 720px per existing mobile breakpoint pattern).
+- Everything else (formation select, Quick Pick, captain/vice-captain, validate,
+  entry flow) unchanged.
+
+CSS
+Append to frontend/app/globals.css (same minified convention already used there):
+.builder-layout, .pitch, .pitch-row, .pitch-slot (.is-filled/.is-empty),
+.pitch-slot-label, .team-name-flag, .fixture-flag, plus @media(max-width:720px)
+stack rule for .builder-layout.
+
+FILES TOUCHED
+- frontend/app/page.tsx (edit)
+- frontend/app/layout.tsx (edit -- import flag-icons CSS)
+- frontend/app/components/ReplayBuilder.tsx (edit)
+- frontend/app/components/FixturesList.tsx (edit)
+- frontend/app/components/FormationPitch.tsx (new)
+- frontend/app/lib/flags.ts (new)
+- frontend/app/globals.css (edit)
+- frontend/package.json / pnpm-lock.yaml (flag-icons dependency, already installed)
+
+VERIFICATION
+- pnpm build (or next dev) in frontend/ -- must compile with no type errors.
+- Run dev server, visually check via browser:
+  - / -- no replay builder embedded, CTA goes to /fixtures.
+  - /fixtures -- team names show flags on upcoming + replay rows.
+  - /replay/18175981 (or another captured fixture id under
+    tests/provider-fixtures/txline-devnet/) -- team header shows flags, pitch
+    renders correct slot counts per formation, picking a player from the list fills
+    the matching pitch slot with flag + last name, clicking a filled slot deselects,
+    switching formation reshapes the pitch and resets picks (existing behavior).

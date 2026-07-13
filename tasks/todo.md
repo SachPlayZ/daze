@@ -2,6 +2,35 @@
 
 ## Plan
 
+- [x] Remove the replay builder from the landing page and route its CTA to fixtures. (`frontend/app/page.tsx`)
+- [x] Add country-code flag helpers and render flags in fixture and replay player/team views. (`frontend/app/lib/flags.ts`, `frontend/app/layout.tsx`, components)
+- [x] Add the derived formation pitch and responsive semantic styling. (`frontend/app/components/FormationPitch.tsx`, `frontend/app/globals.css`)
+
+## Verification
+
+- [x] Run frontend lint and production build.
+- [x] Inspect the changed diff and flag/formation rendering paths.
+
+## Review
+
+### Changed
+
+- Removed the landing-page replay builder; fixtures now own fixture/replay discovery.
+- Added ISO country-code flags and a responsive, clickable formation pitch.
+
+### Verified
+
+- `pnpm lint`, `pnpm build`, `git diff --check`.
+- Browser checks at 320px and desktop: flag rendering, 11 formation slots, Quick Pick fill/deselect, formation reset, and both themes.
+
+### Risks
+
+- Country aliases not in the static map intentionally render no flag rather than guessing.
+
+### Follow-ups
+
+## Previous backlog
+
 - [x] Capture historical TxLINE payloads for player cards, penalty outcomes, and own goals; record evidence and unresolved gaps.
 - [x] Add fail-closed normalizers for captured player-level scoring actions and discard corrections.
 - [x] Add provider contracts plus duplicate, correction, player-join, and full-replay regression tests; promote only proven capabilities.
