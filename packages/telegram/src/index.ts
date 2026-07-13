@@ -32,7 +32,7 @@ export type TelegramHttp = (input: string, init: RequestInit) => Promise<Respons
 export class TelegramClient {
   constructor(private readonly token: string, private readonly http: TelegramHttp = fetch) { if (!token) throw new Error("Telegram bot token is required."); }
   async sendDirectMessage(telegramUserId: string, text: string): Promise<void> {
-    if (!/^\d+$/.test(telegramUserId) || BigInt(telegramUserId) <= 0n) throw new Error("Telegram notifications may only target a direct user ID.");
+    if (!/^\d+$/.test(telegramUserId) || BigInt(telegramUserId) <= BigInt(0)) throw new Error("Telegram notifications may only target a direct user ID.");
     const response = await this.http(`https://api.telegram.org/bot${this.token}/sendMessage`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ chat_id: telegramUserId, text, disable_web_page_preview: true }) });
     if (!response.ok) throw new Error(`Telegram delivery failed (${response.status}).`);
   }

@@ -2,6 +2,20 @@
 
 ## Plan
 
+- [x] Replace dense Telegram command responses with concise inline-keyboard home, fixtures, and settings flows. (`apps/bot/src/main.ts`)
+- [x] Add callback-query authorization and persisted one-tap notification toggles; retain command fallbacks. (`apps/bot/src/main.ts`, `packages/db` read-only)
+- [x] Add flag-labelled fixture controls using stored fixture names, without guessing teams. (`apps/bot/src/main.ts`)
+
+## Verification
+
+- [x] Run bot typecheck and focused Telegram interaction/message regression checks.
+
+- [x] Verify authenticated TxLINE fixture snapshot coverage without exposing credentials; surface every non-empty captured historical fixture with an honest replay state. (`frontend/app/api/replay/route.ts`, `frontend/app/components/FixturesList.tsx`)
+- [x] Verify the Telegram bot runtime/configuration and document the exact local test flow. (`apps/bot/src/main.ts`, read-only)
+
+- [x] Reflow replay builder into a pinned left pitch and independently scrollable right picker; replace position columns with one position selector. (`frontend/app/components/ReplayBuilder.tsx`, `frontend/app/globals.css`)
+- [x] Move Judge Mode below the builder and verify the settlement-gate source for the displayed replay. (`frontend/app/components/ReplayBuilder.tsx`, `apps/api/src/historical-replay.ts` read-only)
+
 - [x] Remove the replay builder from the landing page and route its CTA to fixtures. (`frontend/app/page.tsx`)
 - [x] Add country-code flag helpers and render flags in fixture and replay player/team views. (`frontend/app/lib/flags.ts`, `frontend/app/layout.tsx`, components)
 - [x] Add the derived formation pitch and responsive semantic styling. (`frontend/app/components/FormationPitch.tsx`, `frontend/app/globals.css`)
@@ -15,16 +29,33 @@
 
 ### Changed
 
+- Replaced verbose Telegram command/help and settings messages with native inline buttons. Settings now update in place, with one-tap notification toggles and pause/resume.
+- Fixture picker now labels stored home/away names with verified country flags when a mapping is known; unknown teams use a neutral flag instead of a guess.
+- Registered a concise Telegram command menu as a fallback to the inline controls.
+- Added an authenticated Historical Replay notification session, isolated from contests and settlement, plus an idempotent outbox enqueue for each committed historical point/rank change.
+- Theatre now has explicit `Send Telegram updates` mode. It requires the wallet-linked Telegram account and honours pause/point-impact preferences; only the Oracle worker dispatches DMs.
+- Added an explicit Historical Replay Theatre using only the captured France–Sweden TxLINE sequence. It supports deterministic start/pause/reset and 1x/4x/10x acceleration, updates its replay leaderboard on each normalized event, and renders committed-impact Telegram message previews.
+- Made the Telegram direct-message validation compatible with the frontend TypeScript target.
+- Replay discovery now lists all 26 non-empty captured provider histories; only records with a confirmed, valid lineup are selectable.
+- Pinned the desktop pitch to the left, made only the selected-position player list scrollable, and moved Judge Mode to the bottom of the replay.
 - Removed the landing-page replay builder; fixtures now own fixture/replay discovery.
 - Added ISO country-code flags and a responsive, clickable formation pitch.
 
 ### Verified
 
+- `pnpm --dir apps/bot typecheck`, `pnpm test` (19/19), `git diff --check`.
+- `pnpm test` (19/19), `pnpm --dir apps/worker typecheck`, `pnpm --dir frontend lint`, `pnpm --dir frontend build`, `git diff --check`.
+- Authenticated TxLINE snapshot returned seven current fixtures; replay endpoint returns 26 captured histories (25 ready, 1 unavailable).
+- Telegram `getMe` verified `@dazefantasybot`; bot typecheck passes and its local long-poll process is running.
+- Desktop and 320px browser checks: position selector, independent player-list scrolling, sticky pitch, and leaderboard placement.
 - `pnpm lint`, `pnpm build`, `git diff --check`.
 - Browser checks at 320px and desktop: flag rendering, 11 formation slots, Quick Pick fill/deselect, formation reset, and both themes.
 
 ### Risks
 
+- The Oracle worker must deploy this change and restart once so it applies migration `0009` and drains the new outbox rows. This workspace does not include authority to alter that VM.
+- Telegram links currently use `http://localhost:3000`; the `/link` completion flow works only when opened on this machine. A public `NEXT_PUBLIC_APP_URL` is required for mobile testing.
+- Fixture `18188721` remains correctly settlement-blocked: TxLINE action `615`/revision `701` is a confirmed 71′22″ substitution update missing both player IDs, so it cannot be safely replayed.
 - Country aliases not in the static map intentionally render no flag rather than guessing.
 
 ### Follow-ups
