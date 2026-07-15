@@ -19,3 +19,8 @@
 
 - Mistake: Gated a muted hero film behind first interaction instead of attempting autoplay.
 - Rule: For requested hero autoplay, start muted inline playback on mount, retain a browser-policy fallback, and honor reduced motion.
+
+## Pattern
+
+- Mistake: Implemented requested hero autoplay as a one-shot film.
+- Rule: Confirm whether ambient hero media should loop; when the user asks, use native looping without weakening reduced-motion handling.

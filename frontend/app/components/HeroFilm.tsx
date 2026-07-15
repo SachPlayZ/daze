@@ -35,12 +35,6 @@ export function HeroFilm() {
     return cleanup;
   }, []);
 
-  function resetFilm() {
-    const video = videoRef.current;
-    if (video) video.currentTime = 0;
-    setStarted(false);
-  }
-
   function handlePlay() {
     const video = videoRef.current;
     if (video && window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
@@ -57,6 +51,7 @@ export function HeroFilm() {
         ref={videoRef}
         className="hero-film-video"
         autoPlay
+        loop
         muted
         playsInline
         preload="auto"
@@ -64,7 +59,6 @@ export function HeroFilm() {
         tabIndex={-1}
         aria-hidden="true"
         onPlay={handlePlay}
-        onEnded={resetFilm}
       >
         <source src="/brand/daze-football-hero-film-v2.webm" type="video/webm" />
         <source src="/brand/daze-football-hero-film-v2.mp4" type="video/mp4" />

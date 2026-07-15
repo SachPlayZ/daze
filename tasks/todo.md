@@ -6,7 +6,7 @@
 
 - [x] Remove the desktop and mobile hero scrims so the football frame reads as a true edge-to-edge background.
 - [x] Replace camera-only motion with subtle localized movement in both hands and the lifted foot.
-- [x] Autoplay the muted inline film on load, with interaction fallback and reduced-motion protection.
+- [x] Autoplay and loop the muted inline film, with interaction fallback and reduced-motion protection.
 - [x] Recheck text contrast, playback, reduced motion, both themes, and responsive crops.
 
 ### Plan
@@ -29,12 +29,12 @@
 - Added a 1600×900 poster plus 7-second VP9/WebM and H.264/MP4 films with localized hand and lifted-foot movement; removed camera-only motion.
 - Rebuilt the landing hero as an image canvas with stronger copy hierarchy, focused CTAs, verified-event reassurance, responsive crops, and accessible play/pause controls.
 - Removed all desktop/mobile hero scrims. The image now fills the hero edge-to-edge; fixed media-ink tokens and a compact integrity surface retain contrast without a directional fade.
-- Removed the visible film control; the one-shot film now autoplays muted and inline, falls back to the first interaction when blocked, and remains static for reduced-motion users.
+- Removed the visible film control; the film now autoplays and loops muted and inline, falls back to the first interaction when blocked, and remains static for reduced-motion users.
 
 #### Verified
 
 - `pnpm lint`, production `pnpm build`, and `git diff --check` pass.
-- Poster is 165 KB; WebM is 270 KB; MP4 is 252 KB. Both films are 1600×900, 30 fps, exactly 7 seconds, silent, non-looping, and start automatically when motion is allowed.
+- Poster is 165 KB; WebM is 270 KB; MP4 is 252 KB. Both films are 1600×900, 30 fps, exactly 7 seconds, silent, looping, and start automatically when motion is allowed.
 - Browser QA at 320px, 390px, and 1440px in light/dark themes: full-background rendering with no scrim, no horizontal overflow, no console errors, visible focus, working v2 WebM playback, poster fallback, and reduced-motion CSS.
 
 #### Risks
