@@ -5,7 +5,7 @@ import { useEffect, useState } from "react";
 import { Flag } from "../lib/flags";
 
 type DbFixture = { fixtureId: string; kickoffAt: string; homeTeamName: string | null; awayTeamName: string | null; competition: string | null; feedState: string };
-type ReplayFixture = { fixtureId: string; teams: string; goals: number | null; eventCount: number; ready: boolean; state: "READY" | "LINEUP_UNAVAILABLE" };
+type ReplayFixture = { fixtureId: string; teams: string; score: string | null; eventCount: number; ready: boolean; state: "READY" | "LINEUP_UNAVAILABLE" };
 
 function FixtureTeams({ teams }: { teams: string }) {
   const [home, away] = teams.split(" vs ");
@@ -36,12 +36,12 @@ export function FixturesList() {
       </div>}
     </section>
     <section className="contest-card fixtures-section" aria-labelledby="replay-list-title">
-      <div className="contest-topline"><div><div className="eyebrow">Replay</div><h2 id="replay-list-title">Captured past fixtures</h2></div></div>
-      {replays === null && <div className="empty-state"><span aria-hidden="true" className="empty-ball">◌</span><h3>Loading captured fixtures</h3><p>Reading verified TxLINE replay captures.</p></div>}
-      {replays !== null && replays.length === 0 && <div className="empty-state"><span aria-hidden="true" className="empty-ball">◌</span><h3>No replays captured yet</h3><p>No historical provider events are available.</p></div>}
+      <div className="contest-topline"><div><div className="eyebrow">Past</div><h2 id="replay-list-title">Completed TxLINE fixtures</h2></div></div>
+      {replays === null && <div className="empty-state"><span aria-hidden="true" className="empty-ball">◌</span><h3>Loading completed fixtures</h3><p>Reading durable TxLINE match sequences.</p></div>}
+      {replays !== null && replays.length === 0 && <div className="empty-state"><span aria-hidden="true" className="empty-ball">◌</span><h3>No completed fixtures yet</h3><p>Finished TxLINE fixtures will appear here automatically.</p></div>}
       {replays !== null && replays.length > 0 && <div className="fixture-list">
         {replays.map((fixture) => fixture.ready ? <Link href={`/replay/${fixture.fixtureId}`} className="fixture-row fixture-row-link" key={fixture.fixtureId}>
-          <div><FixtureTeams teams={fixture.teams} /><small>{fixture.goals} verified goal{fixture.goals === 1 ? "" : "s"} · {fixture.eventCount} provider events</small></div>
+          <div><FixtureTeams teams={fixture.teams} /><small>{fixture.score ? `${fixture.score} final` : "Final score unavailable"} · {fixture.eventCount} provider events</small></div>
           <span className="status status-live">Replay ready</span>
         </Link> : <div className="fixture-row" key={fixture.fixtureId}>
           <div><FixtureTeams teams={fixture.teams} /><small>{fixture.eventCount} provider events · confirmed lineup unavailable</small></div>

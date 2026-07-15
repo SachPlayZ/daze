@@ -174,7 +174,12 @@ export async function checkAndSettleContests(): Promise<void> {
     try {
       if (!(await isLedgerReconciled(pool, contest.fixture_id))) { log(`contest-auto-settler: fixture ${contest.fixture_id} not yet reconciled; retrying next cycle.`); continue; }
       const ranked = await pool.query<{ wallet: string }>("select wallet from entry_totals where contest_id = $1 order by total desc, entry_id asc limit 3", [contest.id]);
-      if (!ranked.rows.length) { await pool.query("update contests set status = 'SETTLED', settled_at = now() where id = $1", [contest.id]); log(`contest-auto-settler: contest ${contest.id} had no entrants; marked settled with no payout.`); continue; }
+      if (!ranked.rows.length) {
+        await pool.query("update contests set status = 'SETTLED', settled_at = now() where id = $1", [contest.id]);
+        await pool.query("update fixtures set lifecycle = 'FINALIZED', feed_state = 'FINAL', updated_at = now() where id = $1", [contest.fixture_id]);
+        log(`contest-auto-settler: contest ${contest.id} had no entrants; marked settled with no payout.`);
+        continue;
+      }
       const curve = PAYOUT_CURVE[Math.min(ranked.rows.length, 3)];
       const contestPubkey = new PublicKey(contest.id);
       const mintPubkey = new PublicKey(contest.mint);
@@ -196,6 +201,7 @@ export async function checkAndSettleContests(): Promise<void> {
       if (!settlementAccount?.owner.equals(new PublicKey(config.programId)) || settlementAccount.data.length !== 8 + 89) { log(`contest-auto-settler: on-chain verification failed for contest ${contest.id} (tx ${signature}).`); continue; }
       const rootHex = Buffer.from(root).toString("hex");
       await pool.query("update contests set status = 'SETTLED', settled_at = now(), settlement_root = $1, settlement_tx = $2 where id = $3", [rootHex, signature, contest.id]);
+      await pool.query("update fixtures set lifecycle = 'FINALIZED', feed_state = 'FINAL', updated_at = now() where id = $1", [contest.fixture_id]);
       await pool.query(
         `insert into contest_settlements (contest_id, merkle_root, tx_signature, published_at) values ($1, $2, $3, now()) on conflict (contest_id) do nothing`,
         [contest.id, rootHex, signature],

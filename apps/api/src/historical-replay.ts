@@ -18,7 +18,7 @@ export type HistoricalReplayReadModel = {
   mappingVersion: string;
   readiness: { ready: boolean; reasons: string[] };
   players: FixturePlayer[];
-  eventSummary: { total: number; normalized: number; goals: number; substitutions: number; settlementBlocked: boolean; unresolvedScoringActions: number };
+  eventSummary: { total: number; normalized: number; goals: number; substitutions: number; finalScore: { participant1Goals: number; participant2Goals: number } | null; settlementBlocked: boolean; unresolvedScoringActions: number };
 };
 
 export type JudgeModeEntry = { rank: number; entryId: string; points: number; nonCaptainPoints: number; selectedPlayerGoals: number };
@@ -120,6 +120,7 @@ export function buildHistoricalReplayReadModel(rawActions: unknown[]): Historica
   const fixtureId = text(actions[0], "FixtureId");
   const readiness = evaluateFixtureReadiness(fixtureId, lineup.map((player) => ({ ...player, positionId: player.positionId, unitId: player.unitId })), txlineSoccerWorldCupV1);
   const normalized = normalizeSoccerHistoricalActions(actions, lineup);
+  const final = [...normalized].reverse().find((event): event is Extract<(typeof normalized)[number], { kind: "MATCH_FINALIZED" }> => event.kind === "MATCH_FINALIZED");
   const normalizedRelevant = normalized.filter((event) => event.kind === "GOAL" || event.kind === "SUBSTITUTION" || event.kind === "CARD" || event.kind === "PENALTY_ATTEMPT");
   const lineupGroups = record(lineupRecord).Lineups;
   if (!Array.isArray(lineupGroups)) throw new Error("Historical lineup groups are invalid.");
@@ -158,6 +159,7 @@ export function buildHistoricalReplayReadModel(rawActions: unknown[]): Historica
       normalized: normalized.length,
       goals: normalized.filter((event) => event.kind === "GOAL").length,
       substitutions: normalized.filter((event) => event.kind === "SUBSTITUTION").length,
+      finalScore: final ? { participant1Goals: final.participant1Goals, participant2Goals: final.participant2Goals } : null,
       settlementBlocked: unresolvedScoringActions > 0,
       unresolvedScoringActions,
     },

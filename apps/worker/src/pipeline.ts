@@ -10,8 +10,9 @@ import { initialFixtureScoreState, fullReplay, projectEvent, activeSeconds, type
 import { entryTotal, ledgerRowIdentity, type LedgerRow } from "../../../packages/scoring/src/index";
 import { pointImpactMessage, correctionMessage, rankChangeMessage } from "../../../packages/telegram/src/index";
 import { scoringCapabilities } from "./capabilities";
-import { loadFixtureLineup } from "./lineup";
+import { fixtureLineupFromStoredActions, loadFixtureLineup } from "./lineup";
 import { incrementCounter } from "../../../packages/observability/src/index";
+import { latestObservedMatchClock, recoverMissingFinalizedEvent } from "./recovery";
 
 export type FixtureRuntime = { fixtureId: string; players: FixturePlayer[]; captured: CapturedLineupPlayer[]; state: FixtureScoreState };
 
@@ -27,7 +28,15 @@ async function lockedTeamsFor(pool: Pool, contestId: string): Promise<LockedTeam
 
 /** Loads lineup + rebuilds fixture score state from durably persisted normalized events (deterministic, replay-safe on restart). */
 export async function bootstrapFixture(pool: Pool, client: TxlineClient, fixtureId: string, contestId: string): Promise<FixtureRuntime | null> {
-  const lineup = await loadFixtureLineup(client, fixtureId);
+  const rawRows = await pool.query<{ id: number; raw_json: unknown }>(
+    "select id, raw_json from raw_provider_events where fixture_id = $1 order by id asc",
+    [fixtureId],
+  );
+  const rawActions = rawRows.rows.map((row) => row.raw_json);
+  const hasFinalRaw = rawActions.some((raw) => raw && typeof raw === "object" && !Array.isArray(raw) && (raw as Record<string, unknown>).Action === "game_finalised");
+  const storedLineup = fixtureLineupFromStoredActions(rawActions, fixtureId);
+  const currentLineup = await loadFixtureLineup(client, fixtureId).catch(() => null);
+  const lineup = hasFinalRaw ? storedLineup ?? currentLineup : currentLineup ?? storedLineup;
   if (!lineup || !lineup.readiness.ready) {
     await pool.query(
       `insert into fixtures (id, lifecycle, kickoff_at, feed_state, players_json, readiness_json, updated_at) values ($1, 'WAITING_FOR_PLAYER_DATA', now(), 'WAITING_FOR_PLAYER_DATA', $2, $3, now())
@@ -36,10 +45,12 @@ export async function bootstrapFixture(pool: Pool, client: TxlineClient, fixture
     );
     return null;
   }
+  const nextLifecycle = hasFinalRaw ? "RECONCILING" : "TEAM_BUILDING_OPEN";
+  const nextFeedState = hasFinalRaw ? "FINAL" : "LIVE";
   await pool.query(
-    `insert into fixtures (id, lifecycle, kickoff_at, feed_state, mapping_version, players_json, readiness_json, updated_at) values ($1, 'TEAM_BUILDING_OPEN', now(), 'LIVE', $2, $3, $4, now())
-     on conflict (id) do update set lifecycle = case when fixtures.lifecycle = 'DISCOVERED' then 'TEAM_BUILDING_OPEN' else fixtures.lifecycle end, feed_state = 'LIVE', mapping_version = excluded.mapping_version, players_json = excluded.players_json, readiness_json = excluded.readiness_json, updated_at = now()`,
-    ["txline-soccer-world-cup-v1", fixtureId, JSON.stringify(lineup.readiness.players), JSON.stringify(lineup.readiness)],
+    `insert into fixtures (id, lifecycle, kickoff_at, feed_state, mapping_version, players_json, readiness_json, updated_at) values ($1, $2, now(), $3, $4, $5, $6, now())
+     on conflict (id) do update set lifecycle = case when fixtures.lifecycle in ('FINALIZED', 'CLAIMABLE') then fixtures.lifecycle else excluded.lifecycle end, feed_state = excluded.feed_state, mapping_version = excluded.mapping_version, players_json = excluded.players_json, readiness_json = excluded.readiness_json, updated_at = now()`,
+    [fixtureId, nextLifecycle, nextFeedState, "txline-soccer-world-cup-v1", JSON.stringify(lineup.readiness.players), JSON.stringify(lineup.readiness)],
   );
   const events = await pool.query<{ normalized_json: NormalizedSoccerEvent }>(
     "select normalized_json from normalized_events where fixture_id = $1 order by id asc",
@@ -47,7 +58,27 @@ export async function bootstrapFixture(pool: Pool, client: TxlineClient, fixture
   );
   const teams = await lockedTeamsFor(pool, contestId);
   const capabilities = scoringCapabilities();
-  const state = fullReplay(events.rows.map((row) => row.normalized_json), lineup.readiness.players, teams, capabilities);
+  const existingEvents = events.rows.map((row) => row.normalized_json);
+  let state = fullReplay(existingEvents, lineup.readiness.players, teams, capabilities);
+  const recoveredFinal = recoverMissingFinalizedEvent(rawActions, lineup.captured, existingEvents);
+  if (recoveredFinal) {
+    const finalRaw = [...rawRows.rows].reverse().find((row) => {
+      if (!row.raw_json || typeof row.raw_json !== "object" || Array.isArray(row.raw_json)) return false;
+      const record = row.raw_json as Record<string, unknown>;
+      return record.Action === "game_finalised" && Number(record.Seq) === recoveredFinal.revision;
+    });
+    if (finalRaw) {
+      await pool.query(
+        `insert into normalized_events (fixture_id, source_event_key, revision, parser_version, normalized_json, raw_event_id) values ($1, $2, $3, $4, $5, $6)
+         on conflict (fixture_id, source_event_key, revision) do nothing`,
+        [fixtureId, recoveredFinal.eventKey, String(recoveredFinal.revision), "soccer-historical-v1", JSON.stringify(recoveredFinal), finalRaw.id],
+      );
+      const nextState = projectEvent(state, recoveredFinal, lineup.readiness.players, teams, capabilities);
+      await persistNewRows(pool, contestId, state.rows, nextState.rows, lineup.readiness.players);
+      state = nextState;
+      incrementCounter("normalized_event_total", { kind: recoveredFinal.kind });
+    }
+  }
   const runtime: FixtureRuntime = { fixtureId, players: lineup.readiness.players, captured: lineup.captured, state };
   runtimes.set(fixtureId, runtime);
   return runtime;
@@ -210,11 +241,14 @@ export async function handleProviderMessage(pool: Pool, contestId: string, raw: 
   const rawEventId = rawRow.rows[0]?.id;
   if (rawEventId === undefined) return;
   const action = raw && typeof raw === "object" && !Array.isArray(raw) ? (raw as Record<string, unknown>).Action : null;
-  const priorActions = action === "action_amend" ? (await pool.query<{ raw_json: unknown }>(
+  const contextActions = action === "action_amend" || action === "game_finalised" ? (await pool.query<{ raw_json: unknown }>(
     "select raw_json from raw_provider_events where fixture_id = $1 and id < $2 order by id desc limit 2500",
     [runtime.fixtureId, rawEventId],
   )).rows.map((row) => row.raw_json) : undefined;
-  const normalized = normalizeSoccerScoreAction(raw, runtime.captured, { priorActions });
+  const normalized = normalizeSoccerScoreAction(raw, runtime.captured, {
+    priorActions: action === "action_amend" ? contextActions : undefined,
+    finalElapsedSec: action === "game_finalised" ? latestObservedMatchClock(contextActions ?? []) : undefined,
+  });
   if (!normalized) return;
   await pool.query(
     `insert into normalized_events (fixture_id, source_event_key, revision, parser_version, normalized_json, raw_event_id) values ($1, $2, $3, $4, $5, $6)
@@ -227,6 +261,10 @@ export async function handleProviderMessage(pool: Pool, contestId: string, raw: 
   const nextState = projectEvent(runtime.state, normalized, runtime.players, teams, scoringCapabilities());
   runtime.state = nextState;
   await persistNewRows(pool, contestId, previousRows, nextState.rows, runtime.players);
+  if (normalized.kind === "MATCH_FINALIZED") await pool.query(
+    "update fixtures set lifecycle = 'RECONCILING', feed_state = 'FINAL', updated_at = now() where id = $1",
+    [runtime.fixtureId],
+  );
 }
 
 export function fixtureRuntime(fixtureId: string): FixtureRuntime | undefined { return runtimes.get(fixtureId); }

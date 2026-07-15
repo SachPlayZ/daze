@@ -1,5 +1,43 @@
 # Todo
 
+## Current: completed fixture recovery
+
+### Plan
+
+- [x] Recover `game_finalised` from the durable raw sequence when its payload omits `Clock`; backfill missing normalized events on worker restart. (`apps/worker/src/pipeline.ts`)
+- [x] Read completed Past/Replay fixtures from Postgres raw events, retaining checked-in captures only as a local/demo fallback. (`frontend/lib`, replay route handlers)
+- [x] Add regression coverage for clockless live finalization, durable recovery, and DB-backed replay history.
+
+### Verification
+
+- [x] Run root tests, worker typecheck, frontend lint/build, and diff checks.
+- [x] Verify France–Spain (`18237038`) builds a ready replay and `MATCH_FINALIZED` from its stored raw sequence.
+
+### Review
+
+#### Changed
+
+- Live clockless finals inherit the latest durable provider clock; restart recovery backfills the missing normalized final exactly once from raw history.
+- Completed fixture lineup recovery now uses stored confirmed TxLINE lineups and writes fixture ID/mapping version to the correct columns.
+- Past listing, replay builder, draft commands, and Replay Theatre now use completed Postgres sequences first, with checked-in captures as fallback.
+- Past cards use the normalized authoritative final score, so France–Spain displays `0–2 final` rather than undercounting penalty goals.
+- Settlement advances fixture lifecycle to `FINALIZED`; UI copy now describes automatic completed fixtures.
+
+#### Verified
+
+- `npm test`: 21/21; worker typecheck; frontend lint/build; `git diff --check`.
+- Live Postgres read: France–Spain appears first from `DATABASE`, 1,025 events, 52 ready players, zero unresolved scoring actions, final 0–2 at elapsed second 5,816.
+- HTTP smoke: list/detail/Quick Pick/Theatre all `200`; Theatre reaches final at 21/21 normalized events.
+- Browser: 320/390/desktop, light/dark, no horizontal overflow, visible keyboard focus, France–Spain replay card present.
+
+#### Risks
+
+- Repository fix is not deployed; the Oracle worker must deploy/restart to backfill `MATCH_FINALIZED` and allow settlement. Production DB and Solana state were not mutated during verification.
+
+#### Follow-ups
+
+- Deploy frontend and restart the worker, then confirm contest `HfBVAid2iCXUxxo7JddtTfdfS9tNhd4T4TrqRAr4p4vZ` settles or reports a concrete settlement blocker.
+
 ## Plan
 
 - [x] Replace dense Telegram command responses with concise inline-keyboard home, fixtures, and settings flows. (`apps/bot/src/main.ts`)

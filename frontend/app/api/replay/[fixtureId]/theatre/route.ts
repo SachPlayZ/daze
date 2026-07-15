@@ -1,5 +1,3 @@
-import { readFile } from "node:fs/promises";
-import path from "node:path";
 import { randomUUID } from "node:crypto";
 import { NextResponse } from "next/server";
 import { readSession } from "../../../../../../apps/api/src/auth";
@@ -13,18 +11,12 @@ import { parseLineupAction } from "../../../../../../packages/txline-client/src/
 import { normalizeSoccerHistoricalActions } from "../../../../../../packages/txline-client/src/soccer-normalizer";
 import { pointImpactMessage } from "../../../../../../packages/telegram/src";
 import { db } from "../../../../../lib/db";
+import { replayHistory } from "../../../../../lib/replay-history";
 
 export const dynamic = "force-dynamic";
 
 type Draft = { playerIds: string[]; captainId: string; viceCaptainId: string; formation: "4-4-2" | "4-3-3" | "4-5-1" | "3-5-2" | "3-4-3" | "5-3-2" };
 const formations = new Set<Draft["formation"]>(["4-4-2", "4-3-3", "4-5-1", "3-5-2", "3-4-3", "5-3-2"]);
-
-async function history(fixtureId: string): Promise<unknown[]> {
-  const source = path.resolve(process.cwd(), "..", `tests/provider-fixtures/txline-devnet/scores-historical-${fixtureId}.json`);
-  const parsed = JSON.parse(await readFile(source, "utf8")) as { payload?: unknown };
-  if (!Array.isArray(parsed.payload)) throw new Error("Historical fixture payload is invalid.");
-  return parsed.payload;
-}
 
 function isDraft(value: unknown): value is Draft {
   if (!value || typeof value !== "object" || Array.isArray(value)) return false;
@@ -56,7 +48,8 @@ export async function POST(request: Request, context: { params: Promise<{ fixtur
   try {
     const body = await request.json() as { cursor?: unknown; team?: unknown; command?: unknown; sessionId?: unknown };
     const command = body.command === "START_TELEGRAM" || body.command === "ADVANCE" || body.command === "RESET" || body.command === "STOP_TELEGRAM" ? body.command : null;
-    const raw = await history(fixtureId);
+    const raw = await replayHistory(fixtureId);
+    if (!raw) return NextResponse.json({ message: "Historical fixture is unavailable." }, { status: 404 });
     const replay = buildHistoricalReplayReadModel(raw);
     const lineupRecord = [...raw].reverse().find((action) => action && typeof action === "object" && !Array.isArray(action) && (action as Record<string, unknown>).Action === "lineups" && (action as Record<string, unknown>).Confirmed === true);
     if (!lineupRecord) throw new Error("Historical replay has no confirmed lineup.");

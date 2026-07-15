@@ -11,6 +11,7 @@ assert.equal(replay.players.length, 52);
 assert.deepEqual(replay.players.reduce<Record<string, number>>((counts, player) => ({ ...counts, [player.position]: (counts[player.position] ?? 0) + 1 }), {}), { GK: 6, DEF: 18, MID: 14, FWD: 14 });
 assert.equal(replay.eventSummary.goals, 3);
 assert.equal(replay.eventSummary.substitutions, 10);
+assert.deepEqual(replay.eventSummary.finalScore, { participant1Goals: 3, participant2Goals: 0 });
 assert.equal(replay.eventSummary.settlementBlocked, false, "captured substitution amendments resolve every scoring-relevant player join");
 const quickPick = quickPickHistoricalReplay(captured.payload, "4-3-3", 18175981);
 assert.deepEqual(validateHistoricalReplayDraft(captured.payload, quickPick), { valid: true, errors: [] });
