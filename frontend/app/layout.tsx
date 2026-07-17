@@ -4,7 +4,12 @@ import "flag-icons/css/flag-icons.min.css";
 import "./globals.css";
 
 const sans = Instrument_Sans({ variable: "--font-daze-sans", subsets: ["latin"] });
-const serif = Instrument_Serif({ variable: "--font-daze-serif", subsets: ["latin"], weight: "400" });
+const serif = Instrument_Serif({
+  variable: "--font-daze-serif",
+  subsets: ["latin"],
+  weight: "400",
+  style: ["normal", "italic"],
+});
 export const metadata: Metadata = {
   metadataBase: process.env.NEXT_PUBLIC_APP_URL ? new URL(process.env.NEXT_PUBLIC_APP_URL) : undefined,
   title: "Daze — Every moment changes your game.",

@@ -37,6 +37,11 @@ type LiveData = {
   entrantCount: number;
 };
 
+function formatRuleCode(ruleCode: string) {
+  const words = ruleCode.toLowerCase().replaceAll("_", " ");
+  return words.charAt(0).toUpperCase() + words.slice(1);
+}
+
 export function LiveMatchCentre({ fixtureId = process.env.NEXT_PUBLIC_FANTASY_FIXTURE_ID ?? "18175981" }: { fixtureId?: string }) {
   const [data, setData] = useState<LiveData | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -103,7 +108,13 @@ export function LiveMatchCentre({ fixtureId = process.env.NEXT_PUBLIC_FANTASY_FI
   }
 
   const d = data!;
-  const feedClass = d.feedStale ? "status status-warning" : "status status-live";
+  const isFinal = d.feedState === "FINAL";
+  const feedClass = isFinal
+    ? "status status-live"
+    : d.feedStale
+      ? "status status-warning"
+      : "status status-live";
+  const feedLabel = isFinal ? `Final · ${d.feedLabel}` : d.feedLabel;
 
   return (
     <section className="contest-card" aria-label="Live match centre" aria-live="polite">
@@ -112,7 +123,7 @@ export function LiveMatchCentre({ fixtureId = process.env.NEXT_PUBLIC_FANTASY_FI
           <div className="eyebrow">Live match centre · TxLINE</div>
           <h2>Live scoring</h2>
         </div>
-        <span className={feedClass}>{d.feedLabel}</span>
+        <span className={feedClass}>{feedLabel}</span>
       </div>
 
       {d.myTotal !== null ? (
@@ -136,7 +147,9 @@ export function LiveMatchCentre({ fixtureId = process.env.NEXT_PUBLIC_FANTASY_FI
             <div className="eyebrow">Leaderboard</div>
             <h3>Top entries</h3>
           </div>
-          <span className="status status-warning">Provisional</span>
+          <span className={`status ${isFinal ? "status-live" : "status-warning"}`}>
+            {isFinal ? "Final" : "Provisional"}
+          </span>
         </div>
         {d.leaderboard.length === 0 ? (
           <div className="judge-row">
@@ -185,7 +198,7 @@ export function LiveMatchCentre({ fixtureId = process.env.NEXT_PUBLIC_FANTASY_FI
               <span
                 style={
                   impact.provisional
-                    ? { color: "var(--warning)", fontSize: "10px", fontWeight: 700 }
+                    ? { color: "var(--warning)", fontSize: "12px", fontWeight: 700 }
                     : {}
                 }
               >
@@ -193,7 +206,7 @@ export function LiveMatchCentre({ fixtureId = process.env.NEXT_PUBLIC_FANTASY_FI
               </span>
               <strong>{impact.player_name}</strong>
               <small>
-                {impact.rule_code.replaceAll("_", " ")} · base{" "}
+                {formatRuleCode(impact.rule_code)} · base{" "}
                 {impact.base_points > 0 ? "+" : ""}
                 {impact.base_points}
               </small>
@@ -246,7 +259,7 @@ export function LiveMatchCentre({ fixtureId = process.env.NEXT_PUBLIC_FANTASY_FI
             gap: 12,
           }}
         >
-          <span style={{ fontSize: 13, color: "var(--muted)" }}>Share your result</span>
+          <span style={{ fontSize: 14, color: "var(--muted)" }}>Share your result</span>
           <a
             className="secondary-button"
             href={`/api/contest/share-card?wallet=${encodeURIComponent(wallet)}&fixtureId=${fixtureId}`}
@@ -256,7 +269,7 @@ export function LiveMatchCentre({ fixtureId = process.env.NEXT_PUBLIC_FANTASY_FI
               display: "inline-flex",
               alignItems: "center",
               gap: 8,
-              fontSize: 13,
+              fontSize: 14,
               textDecoration: "none",
             }}
           >

@@ -1,0 +1,168 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-07-17T21:46:19Z",
+  "title": "Design System: Daze",
+  "extensions": {
+    "colorMeta": {
+      "background": { "role": "neutral", "displayName": "Terrace Canvas", "canonical": "#f4f0e8", "tonalRamp": ["oklch(15% 0.011 84.6)", "oklch(27% 0.011 84.6)", "oklch(39% 0.011 84.6)", "oklch(51% 0.011 84.6)", "oklch(63% 0.011 84.6)", "oklch(75% 0.011 84.6)", "oklch(87% 0.011 84.6)", "oklch(95% 0.011 84.6)"] },
+      "background-soft": { "role": "neutral", "displayName": "Warm Bench", "canonical": "#ece6dc", "tonalRamp": ["oklch(15% 0.015 80.7)", "oklch(27% 0.015 80.7)", "oklch(39% 0.015 80.7)", "oklch(51% 0.015 80.7)", "oklch(63% 0.015 80.7)", "oklch(75% 0.015 80.7)", "oklch(87% 0.015 80.7)", "oklch(95% 0.015 80.7)"] },
+      "surface": { "role": "neutral", "displayName": "Programme Paper", "canonical": "#fff9f0", "tonalRamp": ["oklch(15% 0.014 78.3)", "oklch(27% 0.014 78.3)", "oklch(39% 0.014 78.3)", "oklch(51% 0.014 78.3)", "oklch(63% 0.014 78.3)", "oklch(75% 0.014 78.3)", "oklch(87% 0.014 78.3)", "oklch(95% 0.014 78.3)"] },
+      "surface-raised": { "role": "neutral", "displayName": "Fresh Sheet", "canonical": "#ffffff", "tonalRamp": ["oklch(15% 0.000 89.9)", "oklch(27% 0.000 89.9)", "oklch(39% 0.000 89.9)", "oklch(51% 0.000 89.9)", "oklch(63% 0.000 89.9)", "oklch(75% 0.000 89.9)", "oklch(87% 0.000 89.9)", "oklch(95% 0.000 89.9)"] },
+      "foreground": { "role": "neutral", "displayName": "Espresso Ink", "canonical": "#351a12", "tonalRamp": ["oklch(15% 0.046 37.3)", "oklch(27% 0.046 37.3)", "oklch(39% 0.046 37.3)", "oklch(51% 0.046 37.3)", "oklch(63% 0.046 37.3)", "oklch(75% 0.046 37.3)", "oklch(87% 0.046 37.3)", "oklch(95% 0.046 37.3)"] },
+      "muted": { "role": "neutral", "displayName": "Terrace Muted", "canonical": "#766b63", "tonalRamp": ["oklch(15% 0.019 58.4)", "oklch(27% 0.019 58.4)", "oklch(39% 0.019 58.4)", "oklch(51% 0.019 58.4)", "oklch(63% 0.019 58.4)", "oklch(75% 0.019 58.4)", "oklch(87% 0.019 58.4)", "oklch(95% 0.019 58.4)"] },
+      "border": { "role": "neutral", "displayName": "Chalk Border", "canonical": "#d8cfc3", "tonalRamp": ["oklch(15% 0.019 75.3)", "oklch(27% 0.019 75.3)", "oklch(39% 0.019 75.3)", "oklch(51% 0.019 75.3)", "oklch(63% 0.019 75.3)", "oklch(75% 0.019 75.3)", "oklch(87% 0.019 75.3)", "oklch(95% 0.019 75.3)"] },
+      "terrace-coral": { "role": "primary", "displayName": "Terrace Coral", "canonical": "#ff6841", "tonalRamp": ["oklch(15% 0.192 35.5)", "oklch(27% 0.192 35.5)", "oklch(39% 0.192 35.5)", "oklch(51% 0.192 35.5)", "oklch(63% 0.192 35.5)", "oklch(75% 0.192 35.5)", "oklch(87% 0.192 35.5)", "oklch(95% 0.192 35.5)"] },
+      "match-orange": { "role": "secondary", "displayName": "Match Orange", "canonical": "#ff9565", "tonalRamp": ["oklch(15% 0.143 44.5)", "oklch(27% 0.143 44.5)", "oklch(39% 0.143 44.5)", "oklch(51% 0.143 44.5)", "oklch(63% 0.143 44.5)", "oklch(75% 0.143 44.5)", "oklch(87% 0.143 44.5)", "oklch(95% 0.143 44.5)"] },
+      "floodlight-live": { "role": "tertiary", "displayName": "Floodlight Lime", "canonical": "#cfff45", "tonalRamp": ["oklch(15% 0.208 123.3)", "oklch(27% 0.208 123.3)", "oklch(39% 0.208 123.3)", "oklch(51% 0.208 123.3)", "oklch(63% 0.208 123.3)", "oklch(75% 0.208 123.3)", "oklch(87% 0.208 123.3)", "oklch(95% 0.208 123.3)"] },
+      "positive": { "role": "semantic", "displayName": "Pitch Green", "canonical": "#28764c", "tonalRamp": ["oklch(15% 0.102 156.1)", "oklch(27% 0.102 156.1)", "oklch(39% 0.102 156.1)", "oklch(51% 0.102 156.1)", "oklch(63% 0.102 156.1)", "oklch(75% 0.102 156.1)", "oklch(87% 0.102 156.1)", "oklch(95% 0.102 156.1)"] },
+      "positive-surface": { "role": "semantic", "displayName": "Pitch Wash", "canonical": "#ddf4e8", "tonalRamp": ["oklch(15% 0.029 163.2)", "oklch(27% 0.029 163.2)", "oklch(39% 0.029 163.2)", "oklch(51% 0.029 163.2)", "oklch(63% 0.029 163.2)", "oklch(75% 0.029 163.2)", "oklch(87% 0.029 163.2)", "oklch(95% 0.029 163.2)"] },
+      "negative": { "role": "semantic", "displayName": "Card Red", "canonical": "#b93832", "tonalRamp": ["oklch(15% 0.167 27.1)", "oklch(27% 0.167 27.1)", "oklch(39% 0.167 27.1)", "oklch(51% 0.167 27.1)", "oklch(63% 0.167 27.1)", "oklch(75% 0.167 27.1)", "oklch(87% 0.167 27.1)", "oklch(95% 0.167 27.1)"] },
+      "negative-surface": { "role": "semantic", "displayName": "Card Red Wash", "canonical": "#fbe3e0", "tonalRamp": ["oklch(15% 0.027 26.2)", "oklch(27% 0.027 26.2)", "oklch(39% 0.027 26.2)", "oklch(51% 0.027 26.2)", "oklch(63% 0.027 26.2)", "oklch(75% 0.027 26.2)", "oklch(87% 0.027 26.2)", "oklch(95% 0.027 26.2)"] },
+      "warning": { "role": "semantic", "displayName": "Referee Gold", "canonical": "#8a5a00", "tonalRamp": ["oklch(15% 0.108 73.3)", "oklch(27% 0.108 73.3)", "oklch(39% 0.108 73.3)", "oklch(51% 0.108 73.3)", "oklch(63% 0.108 73.3)", "oklch(75% 0.108 73.3)", "oklch(87% 0.108 73.3)", "oklch(95% 0.108 73.3)"] },
+      "warning-surface": { "role": "semantic", "displayName": "Referee Gold Wash", "canonical": "#fff0c7", "tonalRamp": ["oklch(15% 0.055 90.3)", "oklch(27% 0.055 90.3)", "oklch(39% 0.055 90.3)", "oklch(51% 0.055 90.3)", "oklch(63% 0.055 90.3)", "oklch(75% 0.055 90.3)", "oklch(87% 0.055 90.3)", "oklch(95% 0.055 90.3)"] },
+      "info": { "role": "semantic", "displayName": "Verification Blue", "canonical": "#315fa8", "tonalRamp": ["oklch(15% 0.128 259.3)", "oklch(27% 0.128 259.3)", "oklch(39% 0.128 259.3)", "oklch(51% 0.128 259.3)", "oklch(63% 0.128 259.3)", "oklch(75% 0.128 259.3)", "oklch(87% 0.128 259.3)", "oklch(95% 0.128 259.3)"] },
+      "info-surface": { "role": "semantic", "displayName": "Verification Wash", "canonical": "#e6eefb", "tonalRamp": ["oklch(15% 0.020 260.2)", "oklch(27% 0.020 260.2)", "oklch(39% 0.020 260.2)", "oklch(51% 0.020 260.2)", "oklch(63% 0.020 260.2)", "oklch(75% 0.020 260.2)", "oklch(87% 0.020 260.2)", "oklch(95% 0.020 260.2)"] },
+      "focus": { "role": "semantic", "displayName": "Focus Blue", "canonical": "#2f6bff", "tonalRamp": ["oklch(15% 0.229 263.9)", "oklch(27% 0.229 263.9)", "oklch(39% 0.229 263.9)", "oklch(51% 0.229 263.9)", "oklch(63% 0.229 263.9)", "oklch(75% 0.229 263.9)", "oklch(87% 0.229 263.9)", "oklch(95% 0.229 263.9)"] },
+      "night-background": { "role": "neutral", "displayName": "Match-night Espresso", "canonical": "#171210", "tonalRamp": ["oklch(15% 0.009 43.0)", "oklch(27% 0.009 43.0)", "oklch(39% 0.009 43.0)", "oklch(51% 0.009 43.0)", "oklch(63% 0.009 43.0)", "oklch(75% 0.009 43.0)", "oklch(87% 0.009 43.0)", "oklch(95% 0.009 43.0)"] },
+      "night-background-soft": { "role": "neutral", "displayName": "Night Bench", "canonical": "#1e1714", "tonalRamp": ["oklch(15% 0.013 44.5)", "oklch(27% 0.013 44.5)", "oklch(39% 0.013 44.5)", "oklch(51% 0.013 44.5)", "oklch(63% 0.013 44.5)", "oklch(75% 0.013 44.5)", "oklch(87% 0.013 44.5)", "oklch(95% 0.013 44.5)"] },
+      "night-surface": { "role": "neutral", "displayName": "Night Programme", "canonical": "#241c18", "tonalRamp": ["oklch(15% 0.015 48.1)", "oklch(27% 0.015 48.1)", "oklch(39% 0.015 48.1)", "oklch(51% 0.015 48.1)", "oklch(63% 0.015 48.1)", "oklch(75% 0.015 48.1)", "oklch(87% 0.015 48.1)", "oklch(95% 0.015 48.1)"] },
+      "night-surface-raised": { "role": "neutral", "displayName": "Night Raised", "canonical": "#30241e", "tonalRamp": ["oklch(15% 0.021 47.9)", "oklch(27% 0.021 47.9)", "oklch(39% 0.021 47.9)", "oklch(51% 0.021 47.9)", "oklch(63% 0.021 47.9)", "oklch(75% 0.021 47.9)", "oklch(87% 0.021 47.9)", "oklch(95% 0.021 47.9)"] },
+      "night-foreground": { "role": "neutral", "displayName": "Floodlit Cream", "canonical": "#f7f0e6", "tonalRamp": ["oklch(15% 0.015 77.1)", "oklch(27% 0.015 77.1)", "oklch(39% 0.015 77.1)", "oklch(51% 0.015 77.1)", "oklch(63% 0.015 77.1)", "oklch(75% 0.015 77.1)", "oklch(87% 0.015 77.1)", "oklch(95% 0.015 77.1)"] },
+      "night-muted": { "role": "neutral", "displayName": "Night Muted", "canonical": "#afa49a", "tonalRamp": ["oklch(15% 0.019 64.8)", "oklch(27% 0.019 64.8)", "oklch(39% 0.019 64.8)", "oklch(51% 0.019 64.8)", "oklch(63% 0.019 64.8)", "oklch(75% 0.019 64.8)", "oklch(87% 0.019 64.8)", "oklch(95% 0.019 64.8)"] },
+      "night-border": { "role": "neutral", "displayName": "Night Chalk", "canonical": "#493a32", "tonalRamp": ["oklch(15% 0.025 49.6)", "oklch(27% 0.025 49.6)", "oklch(39% 0.025 49.6)", "oklch(51% 0.025 49.6)", "oklch(63% 0.025 49.6)", "oklch(75% 0.025 49.6)", "oklch(87% 0.025 49.6)", "oklch(95% 0.025 49.6)"] },
+      "night-terrace-coral": { "role": "primary", "displayName": "Night Terrace Coral", "canonical": "#ff7048", "tonalRamp": ["oklch(15% 0.183 36.4)", "oklch(27% 0.183 36.4)", "oklch(39% 0.183 36.4)", "oklch(51% 0.183 36.4)", "oklch(63% 0.183 36.4)", "oklch(75% 0.183 36.4)", "oklch(87% 0.183 36.4)", "oklch(95% 0.183 36.4)"] },
+      "night-match-orange": { "role": "secondary", "displayName": "Night Match Orange", "canonical": "#ff9a6b", "tonalRamp": ["oklch(15% 0.136 45.2)", "oklch(27% 0.136 45.2)", "oklch(39% 0.136 45.2)", "oklch(51% 0.136 45.2)", "oklch(63% 0.136 45.2)", "oklch(75% 0.136 45.2)", "oklch(87% 0.136 45.2)", "oklch(95% 0.136 45.2)"] },
+      "night-floodlight-live": { "role": "tertiary", "displayName": "Night Floodlight Lime", "canonical": "#d2ff4d", "tonalRamp": ["oklch(15% 0.202 122.8)", "oklch(27% 0.202 122.8)", "oklch(39% 0.202 122.8)", "oklch(51% 0.202 122.8)", "oklch(63% 0.202 122.8)", "oklch(75% 0.202 122.8)", "oklch(87% 0.202 122.8)", "oklch(95% 0.202 122.8)"] },
+      "night-positive": { "role": "semantic", "displayName": "Night Pitch Green", "canonical": "#86e0b0", "tonalRamp": ["oklch(15% 0.111 159.4)", "oklch(27% 0.111 159.4)", "oklch(39% 0.111 159.4)", "oklch(51% 0.111 159.4)", "oklch(63% 0.111 159.4)", "oklch(75% 0.111 159.4)", "oklch(87% 0.111 159.4)", "oklch(95% 0.111 159.4)"] },
+      "night-positive-surface": { "role": "semantic", "displayName": "Night Pitch Wash", "canonical": "#173629", "tonalRamp": ["oklch(15% 0.044 164.2)", "oklch(27% 0.044 164.2)", "oklch(39% 0.044 164.2)", "oklch(51% 0.044 164.2)", "oklch(63% 0.044 164.2)", "oklch(75% 0.044 164.2)", "oklch(87% 0.044 164.2)", "oklch(95% 0.044 164.2)"] },
+      "night-negative": { "role": "semantic", "displayName": "Night Card Red", "canonical": "#ff817a", "tonalRamp": ["oklch(15% 0.155 24.8)", "oklch(27% 0.155 24.8)", "oklch(39% 0.155 24.8)", "oklch(51% 0.155 24.8)", "oklch(63% 0.155 24.8)", "oklch(75% 0.155 24.8)", "oklch(87% 0.155 24.8)", "oklch(95% 0.155 24.8)"] },
+      "night-negative-surface": { "role": "semantic", "displayName": "Night Card Red Wash", "canonical": "#40201e", "tonalRamp": ["oklch(15% 0.050 24.4)", "oklch(27% 0.050 24.4)", "oklch(39% 0.050 24.4)", "oklch(51% 0.050 24.4)", "oklch(63% 0.050 24.4)", "oklch(75% 0.050 24.4)", "oklch(87% 0.050 24.4)", "oklch(95% 0.050 24.4)"] },
+      "night-warning": { "role": "semantic", "displayName": "Night Referee Gold", "canonical": "#f4cd72", "tonalRamp": ["oklch(15% 0.119 86.7)", "oklch(27% 0.119 86.7)", "oklch(39% 0.119 86.7)", "oklch(51% 0.119 86.7)", "oklch(63% 0.119 86.7)", "oklch(75% 0.119 86.7)", "oklch(87% 0.119 86.7)", "oklch(95% 0.119 86.7)"] },
+      "night-warning-surface": { "role": "semantic", "displayName": "Night Referee Gold Wash", "canonical": "#3a2d14", "tonalRamp": ["oklch(15% 0.043 82.3)", "oklch(27% 0.043 82.3)", "oklch(39% 0.043 82.3)", "oklch(51% 0.043 82.3)", "oklch(63% 0.043 82.3)", "oklch(75% 0.043 82.3)", "oklch(87% 0.043 82.3)", "oklch(95% 0.043 82.3)"] },
+      "night-info": { "role": "semantic", "displayName": "Night Verification Blue", "canonical": "#9fc1ff", "tonalRamp": ["oklch(15% 0.096 262.2)", "oklch(27% 0.096 262.2)", "oklch(39% 0.096 262.2)", "oklch(51% 0.096 262.2)", "oklch(63% 0.096 262.2)", "oklch(75% 0.096 262.2)", "oklch(87% 0.096 262.2)", "oklch(95% 0.096 262.2)"] },
+      "night-info-surface": { "role": "semantic", "displayName": "Night Verification Wash", "canonical": "#172642", "tonalRamp": ["oklch(15% 0.056 262.0)", "oklch(27% 0.056 262.0)", "oklch(39% 0.056 262.0)", "oklch(51% 0.056 262.0)", "oklch(63% 0.056 262.0)", "oklch(75% 0.056 262.0)", "oklch(87% 0.056 262.0)", "oklch(95% 0.056 262.0)"] },
+      "night-focus": { "role": "semantic", "displayName": "Night Focus Blue", "canonical": "#8cb4ff", "tonalRamp": ["oklch(15% 0.117 262.4)", "oklch(27% 0.117 262.4)", "oklch(39% 0.117 262.4)", "oklch(51% 0.117 262.4)", "oklch(63% 0.117 262.4)", "oklch(75% 0.117 262.4)", "oklch(87% 0.117 262.4)", "oklch(95% 0.117 262.4)"] }
+    },
+    "typographyMeta": {
+      "display": { "displayName": "Matchday Display", "purpose": "Landing, replay cover, share card, and final-result headlines." },
+      "display-accent": { "displayName": "Editorial Accent", "purpose": "One short marketing phrase only." },
+      "headline": { "displayName": "Page Headline", "purpose": "Primary page titles and major match states." },
+      "title": { "displayName": "Surface Title", "purpose": "Cards, team names, and section headings." },
+      "body": { "displayName": "Fan Copy", "purpose": "Primary explanation and task content." },
+      "label": { "displayName": "Control Label", "purpose": "Navigation, controls, and player labels." },
+      "micro": { "displayName": "Status Label", "purpose": "True compact state labels only." }
+    },
+    "shadows": [
+      { "name": "floating-overlay", "value": "0 18px 50px rgb(53 26 18 / 14%)", "purpose": "Modal, onboarding sheet, or popover only." }
+    ],
+    "motion": [
+      { "name": "micro", "value": "160ms cubic-bezier(.32,.72,0,1)", "purpose": "Hover, focus, and compact control feedback." },
+      { "name": "normal", "value": "220ms cubic-bezier(.32,.72,0,1)", "purpose": "Card and state transitions." },
+      { "name": "live", "value": "420ms cubic-bezier(.32,.72,0,1)", "purpose": "Point deltas and rank movement." }
+    ],
+    "breakpoints": [
+      { "name": "compact", "value": "360px" },
+      { "name": "mobile", "value": "720px" }
+    ]
+  },
+  "components": [
+    {
+      "name": "Primary Button",
+      "kind": "button",
+      "refersTo": "button-primary",
+      "description": "The single decisive action on a task surface.",
+      "html": "<button class=\"ds-btn-primary\">Confirm entry <span aria-hidden=\"true\">↗</span></button>",
+      "css": ".ds-btn-primary{min-height:52px;display:inline-flex;align-items:center;gap:18px;padding:0 20px;border:0;border-radius:14px;background:var(--foreground,#351a12);color:var(--background,#f4f0e8);font:600 14px/20px Instrument Sans,sans-serif;cursor:pointer;transition:transform 160ms cubic-bezier(.32,.72,0,1),background 160ms cubic-bezier(.32,.72,0,1)}.ds-btn-primary:hover{transform:translateY(-2px)}.ds-btn-primary:active{transform:translateY(0)}.ds-btn-primary:focus-visible{outline:3px solid var(--focus,#2f6bff);outline-offset:3px}.ds-btn-primary:disabled{cursor:not-allowed;opacity:.55;transform:none}"
+    },
+    {
+      "name": "Secondary Button",
+      "kind": "button",
+      "refersTo": "button-secondary",
+      "description": "A familiar secondary action without decorative elevation.",
+      "html": "<button class=\"ds-btn-secondary\">View details</button>",
+      "css": ".ds-btn-secondary{min-height:44px;padding:0 14px;border:1px solid var(--border,#d8cfc3);border-radius:12px;background:transparent;color:var(--foreground,#351a12);font:600 14px/20px Instrument Sans,sans-serif;cursor:pointer;transition:background 160ms cubic-bezier(.32,.72,0,1)}.ds-btn-secondary:hover{background:var(--background-soft,#ece6dc)}.ds-btn-secondary:focus-visible{outline:3px solid var(--focus,#2f6bff);outline-offset:3px}.ds-btn-secondary:disabled{cursor:not-allowed;opacity:.55}"
+    },
+    {
+      "name": "Status Chip",
+      "kind": "chip",
+      "refersTo": "status-positive",
+      "description": "Explicit live or confirmed state with semantic surface and text.",
+      "html": "<span class=\"ds-status\"><span aria-hidden=\"true\">●</span> Replay ready</span>",
+      "css": ".ds-status{display:inline-flex;align-items:center;gap:6px;padding:5px 10px;border-radius:999px;background:var(--positive-surface,#ddf4e8);color:var(--positive,#28764c);font:700 12px/16px Instrument Sans,sans-serif;white-space:nowrap}.ds-status:focus-visible{outline:3px solid var(--focus,#2f6bff);outline-offset:3px}"
+    },
+    {
+      "name": "Surface Card",
+      "kind": "card",
+      "refersTo": "card-surface",
+      "description": "A flat gameplay container with solid surface and structural border.",
+      "html": "<section class=\"ds-card\"><h3>Build your XI</h3><p>Choose 11 players from verified lineups.</p></section>",
+      "css": ".ds-card{padding:24px;border:1px solid var(--border,#d8cfc3);border-radius:18px;background:var(--surface,#fff9f0);color:var(--foreground,#351a12);font-family:Instrument Sans,sans-serif}.ds-card h3{margin:0;font-size:22px;line-height:27px;letter-spacing:-.02em}.ds-card p{margin:8px 0 0;max-width:65ch;color:var(--muted,#766b63);font-size:14px;line-height:20px}.ds-card:focus-within{outline:3px solid var(--focus,#2f6bff);outline-offset:3px}"
+    },
+    {
+      "name": "Select Field",
+      "kind": "input",
+      "refersTo": "field-select",
+      "description": "Compact formation or position selection with a full touch target.",
+      "html": "<label class=\"ds-field\"><span>Formation</span><select><option>4-3-3</option><option>4-4-2</option></select></label>",
+      "css": ".ds-field{display:grid;gap:5px;color:var(--foreground,#351a12);font:700 13px/18px Instrument Sans,sans-serif}.ds-field select{min-height:44px;padding:0 10px;border:1px solid var(--border,#d8cfc3);border-radius:10px;background:var(--surface-raised,#fff);color:var(--foreground,#351a12);font:600 14px/20px Instrument Sans,sans-serif}.ds-field select:hover{background:var(--background-soft,#ece6dc)}.ds-field select:focus-visible{outline:3px solid var(--focus,#2f6bff);outline-offset:3px}.ds-field select:disabled{opacity:.55}"
+    },
+    {
+      "name": "Product Navigation",
+      "kind": "nav",
+      "description": "Compact task navigation with muted routes and a clear wallet action.",
+      "html": "<nav class=\"ds-nav\" aria-label=\"Preview navigation\"><div class=\"ds-nav-links\"><a href=\"#fixtures\">Fixtures</a><a href=\"#season\">Season</a></div><button>Connect wallet</button></nav>",
+      "css": ".ds-nav{min-height:76px;display:flex;align-items:center;justify-content:space-between;gap:16px;padding:16px 24px;background:var(--background,#f4f0e8);font-family:Instrument Sans,sans-serif}.ds-nav-links{display:flex;gap:14px}.ds-nav a{min-height:44px;display:inline-flex;align-items:center;color:var(--muted,#766b63);font-size:14px;text-decoration:none}.ds-nav a:hover{color:var(--foreground,#351a12)}.ds-nav button{min-height:44px;padding:0 17px;border:0;border-radius:999px;background:var(--foreground,#351a12);color:var(--background,#f4f0e8);font-weight:600}.ds-nav a:focus-visible,.ds-nav button:focus-visible{outline:3px solid var(--focus,#2f6bff);outline-offset:3px}"
+    },
+    {
+      "name": "Fixture Row",
+      "kind": "custom",
+      "description": "A responsive fixture list item with explicit availability state.",
+      "html": "<a class=\"ds-fixture\" href=\"#fixture\"><span><strong>France vs Spain</strong><small>2–1 final · 1,025 provider events</small></span><span class=\"ds-fixture-status\">Replay ready</span></a>",
+      "css": ".ds-fixture{display:flex;align-items:center;justify-content:space-between;gap:14px;padding:14px 16px;border:1px solid var(--border,#d8cfc3);border-radius:14px;background:var(--surface-raised,#fff);color:var(--foreground,#351a12);font-family:Instrument Sans,sans-serif;text-decoration:none}.ds-fixture:hover{background:var(--background-soft,#ece6dc)}.ds-fixture:focus-visible{outline:3px solid var(--focus,#2f6bff);outline-offset:3px}.ds-fixture strong{display:block;font-size:15px}.ds-fixture small{display:block;margin-top:2px;color:var(--muted,#766b63);font-size:12px}.ds-fixture-status{padding:5px 10px;border-radius:999px;background:var(--positive-surface,#ddf4e8);color:var(--positive,#28764c);font-size:12px;font-weight:700;white-space:nowrap}"
+    },
+    {
+      "name": "Personal Impact Row",
+      "kind": "custom",
+      "description": "An explainable point impact with minute, player, reason, and signed delta.",
+      "html": "<div class=\"ds-impact\"><span>64′</span><strong>Dembélé</strong><small>Goal · captain 2×</small><b>+10</b></div>",
+      "css": ".ds-impact{display:grid;grid-template-columns:46px minmax(0,1fr) auto;gap:4px 10px;align-items:center;padding:11px 14px;border:1px solid var(--border,#d8cfc3);border-radius:10px;background:var(--surface-raised,#fff);color:var(--foreground,#351a12);font:400 13px/18px Instrument Sans,sans-serif}.ds-impact>span{grid-row:span 2;color:var(--muted,#766b63);font-variant-numeric:tabular-nums}.ds-impact strong{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.ds-impact small{grid-column:2;color:var(--muted,#766b63)}.ds-impact b{grid-column:3;grid-row:span 2;color:var(--positive,#28764c);font-variant-numeric:tabular-nums}.ds-impact:focus-within{outline:3px solid var(--focus,#2f6bff);outline-offset:3px}"
+    }
+  ],
+  "narrative": {
+    "northStar": "Matchday Editorial",
+    "overview": "Daze pairs the warmth of premium football culture with the precision of a trusted match companion. Brand moments feel expressive and human; team building, live scoring, ranking, wallet confirmation, and claims become quiet, structured surfaces where the consequence of every event is immediately legible. Warm light is the default scene, like a supporter checking their XI before kickoff in daylight. Match-night dark is an intentional preference for following play in lower ambient light, never a visual shortcut into crypto or esports language. Layout is mobile-first, dense only when football decisions require it, and responsive through structural reflow rather than decorative type scaling.",
+    "keyCharacteristics": [
+      "Warm editorial identity outside the match; crisp utility during it.",
+      "Semantic color reserved for live state, point impact, rank, warnings, and corrections.",
+      "Solid, bounded gameplay surfaces with clear alignment and compact data grouping.",
+      "Football-first copy with blockchain detail progressively disclosed.",
+      "Motion communicates committed state and never delays interaction."
+    ],
+    "rules": [
+      { "name": "The Earned Accent Rule", "body": "Coral, orange, and lime appear only when brand emphasis or live state earns them; inactive gameplay remains neutral.", "section": "colors" },
+      { "name": "The Solid Pitch Rule", "body": "Team builders, player lists, timelines, leaderboards, wallet confirmations, claims, and errors always sit on solid semantic surfaces, never on the brand gradient.", "section": "colors" },
+      { "name": "The Two-Theme Rule", "body": "Every component ships in warm light and match-night dark; no raw black, white, or gray utility may bypass the semantic theme tokens.", "section": "colors" },
+      { "name": "The One Match Voice Rule", "body": "Instrument Sans owns the product; Instrument Serif may emphasize one short marketing phrase but never competes with gameplay hierarchy.", "section": "typography" },
+      { "name": "The Tabular Score Rule", "body": "Scores, clocks, points, ranks, odds, countdowns, and currency always use tabular numerals.", "section": "typography" },
+      { "name": "The Status Case Rule", "body": "Sentence case is default. Uppercase is reserved for compact state labels, never repeated as decorative section scaffolding.", "section": "typography" },
+      { "name": "The Flat-by-Default Rule", "body": "Cards, builder panels, player rows, timelines, and leaderboards use tonal contrast or a border, never a routine drop shadow.", "section": "elevation" },
+      { "name": "The One Floating Layer Rule", "body": "A screen exposes at most one shadow-bearing layer at a time, and that layer must interrupt the task for a clear reason.", "section": "elevation" }
+    ],
+    "dos": [
+      "Do use the approved DazeWordmark and DazeMark assets with required clear space and at least 88px wordmark width.",
+      "Do build every surface from semantic tokens and verify warm-light and match-night-dark behavior.",
+      "Do keep touch targets at least 44×44px, show a visible 3px focus outline, support 200% text scaling, and test the core flow at 320px.",
+      "Do use explicit signed values, icons or text, and accessible announcements for positive, negative, live, provisional, final, and correction states.",
+      "Do use solid surfaces for builders, player lists, timelines, leaderboards, wallet confirmation, claims, rules, and errors.",
+      "Do respect reduced motion and keep ordinary state transitions between 120ms and 260ms."
+    ],
+    "donts": [
+      "Don't make Daze resemble a crypto casino, betting terminal, degen or cyberpunk dashboard, generic Web3 landing page, esports skin, or developer console.",
+      "Don't use purple-on-black defaults, token tickers, casino motifs, excessive glassmorphism, neon glows, dense gameplay content on gradients, unlicensed football imagery, or protocol-first consumer copy.",
+      "Don't substitute a font for the Daze logo, crop the wordmark into a mark, stretch it, recolor it by team, or place it inside a pill.",
+      "Don't use raw bg-black, text-white, hardcoded gray scales, or feature-level hex values when a semantic token exists.",
+      "Don't use color alone for status, gradient text, decorative grid or stripe backgrounds, side-stripe card accents, nested cards, or border-plus-wide-shadow ghost cards.",
+      "Don't introduce autoplay loops, constant particles, pulsing glows, bounce easing, or motion that delays state commitment, navigation, transaction feedback, or correction display."
+    ]
+  }
+}
