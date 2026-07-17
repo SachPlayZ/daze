@@ -1,5 +1,110 @@
 # Todo
 
+## Current: anti-slop landing page craft
+
+### Plan
+
+- [x] Confirm the landing-page shape brief and anti-slop visual lane.
+- [x] Confirm full-bleed football-film direction, structural references, and existing brand anchors.
+- [x] Generate and confirm the palette artifact.
+- [x] Generate landing-page mock directions and select one north star.
+- [x] Inventory mock ingredients and required production assets.
+- [x] Recraft the Next.js landing page using existing Daze tokens/components.
+- [x] Inspect and refine responsive, themed, accessible, loading, stale, error, and reduced-motion states.
+
+### Verification
+
+- [x] Run isolated layout and typography assessments plus mechanical detectors.
+- [x] Run frontend lint/build and `git diff --check`.
+- [x] Inspect 320px, 390px, tablet, and desktop in warm-light and match-night themes.
+
+### Review
+
+#### Changed
+
+- Rebuilt the home page around the selected Live Consequence Theatre direction.
+- Added a real-lineup formation specimen, scoring-consequence ribbon, receipt proof, live theatre, and quieter tournament context.
+- Added responsive landing tokens/styles, true Instrument Serif italics, final/provisional lifecycle labels, and design-reference artifacts.
+
+#### Verified
+
+- Frontend lint and production build pass; Impeccable layout and current landing typography detectors return no findings.
+- Browser QA passes at 320px, 390px, 768px, and 1440px in warm-light and match-night themes with no horizontal overflow.
+- Simulated 200% text scaling contains all sections; touch targets are at least 44px; loading, error, stale, provisional, and final live states were exercised with real local data.
+
+#### Risks
+
+- The configured featured fixture currently has no contest, so production correctly shows the honest unavailable state until deployment configuration points at an active or completed contest.
+
+#### Follow-ups
+
+- None.
+
+## Current: impeccable initialization
+
+### Plan
+
+- [x] Load Impeccable init guidance and existing project lessons.
+- [x] Extract confirmed product, platform, audience, positioning, brand, anti-reference, and accessibility context from repository sources. (`PLAN.md`, `README.md`, `frontend/`)
+- [x] Write root `PRODUCT.md` without altering existing implementation.
+- [x] Configure Impeccable live mode for the Next.js frontend if no config exists.
+- [x] Generate `DESIGN.md` and its live-panel sidecar from the existing visual system.
+
+### Verification
+
+- [x] Validate `DESIGN.md` with Impeccable's parser; parse the YAML frontmatter and JSON sidecar.
+- [x] Validate live config, run `git diff --check`, and inspect the scoped diff.
+
+### Review
+
+#### Changed
+
+- Added root product and design context for Daze using the Matchday Editorial direction.
+- Added Impeccable live-mode and design-panel configuration.
+
+#### Verified
+
+- Impeccable parser finds all six canonical design sections, four color groups, seven component groups, and complete do/don't guidance.
+- YAML frontmatter exposes 38 light/dark color tokens, seven typography roles, and five component tokens; JSON sidecar exposes 38 color ramps and eight rendered component examples.
+- CSP scan found no blocking policy; config JSON and diff checks pass.
+
+#### Risks
+
+- No production implementation changed; this documents the current normative system and configures local design tooling only.
+
+#### Follow-ups
+
+- Use `$impeccable live` for browser variants or `$impeccable audit frontend` for a technical UI review.
+
+## Current: replay total mismatch diagnosis
+
+### Plan
+
+- [x] Trace the selected XI through finalized Check XI and cursor-based Replay Theatre scoring. (`apps/api/src/historical-replay.ts`, `frontend/app/api/replay/[fixtureId]/theatre/route.ts`)
+- [x] Reproduce the 26 vs 15 totals from the captured France–Spain sequence and compare ledger rows.
+- [x] Identify the exact missing/different scoring inputs; report root cause without changing behavior.
+
+### Verification
+
+- [x] Run focused replay/scoring checks and inspect final ledger equivalence.
+
+### Review
+
+#### Changed
+
+- No product code changed; diagnosis only.
+
+#### Verified
+
+- The current Check XI draft shown in the screenshot captains Dembélé with Oyarzabal as vice and projects 26.
+- The active Telegram replay session for fixture `18237038` froze an earlier XI captained by Maignan with Cubarsí as vice; full replay of that stored XI is exactly 15.
+- Theatre reloads `team_json` from the Telegram session on every advance, so later builder edits cannot affect that replay.
+- Root suite passes: 21/21 specs.
+
+#### Risks
+
+- Replay Theatre can display a stale/frozen XI total beside a newer Check XI projection without identifying which XI it is scoring.
+
 ## Current: cinematic landing hero
 
 ### Correction
